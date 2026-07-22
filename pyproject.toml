@@ -1,0 +1,4 @@
+[dependency-groups]
+dev = [
+    "pydantic>=2.13.4",
+]
