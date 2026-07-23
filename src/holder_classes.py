@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator  # , field_validator
 # from enum import Enum
-# from typing import Any
+# from typing import Any, TypedDict
 
 
 class InputHolder(BaseModel):
@@ -8,7 +8,7 @@ class InputHolder(BaseModel):
     mode: str = Field()
     max_chunk_size: int = Field(gt=0)
     dataset_path: str = Field(min_length=1)
-    k: int = Field(gt=0, lt=1)
+    k: float = Field(gt=0, lt=1)
     save_directory: str = Field(min_length=1)
     student_answer_path: str = Field(min_length=1)
     max_context_length: int = Field(gt=0)
@@ -18,12 +18,20 @@ class InputHolder(BaseModel):
     @model_validator(mode="after")
     def validate_inputs(self) -> "InputHolder":
         if self.mode == "answer" and not self.question:
-            raise ValueError(f"when calling the '{self.mode}' mode, a question"
+            raise ValueError(f"When calling the '{self.mode}' mode, a question"
                              " must be provided as the second argument.")
+
+        try:
+            with open(self.dataset_path):
+                pass
+        except FileNotFoundError:
+            raise ValueError("File set as dataset_path does not exist:"
+                             f" {self.dataset_path}")
 
         return (self)
 
 
+"""
 class Parameter(BaseModel):
     p_name: str = Field(min_length=1)
     p_type: str = Field(min_length=1)
@@ -121,53 +129,4 @@ class DefFunctException(Exception):
     def __init__(self, e_len: int, *args: object) -> None:
         super().__init__(*args)
         self.e_len = e_len
-
-
-"""
-import torch
-
-class Null_LLM():
-
-    def __init__(
-        self,
-        model_name: str = "Qwen/Qwen3-0.6B",
-        *,
-        device: str = None,
-        dtype: torch.dtype = None,
-        trust_remote_code: bool = True,
-    ) -> None:
-
-        self._model_name = model_name
-        device = "cpu"
-        self._device = device
-
-        self.trust = trust_remote_code
-
-    def encode(self, text: str) -> torch.Tensor:
-        "
-        # Tokenise *text* and return a 2-D
-        # ``input_ids`` tensor on the target device.
-        "
-        ids = [[3838, 374, 279, 2629, 315, 220, 17, 323, 220, 18, 30]]
-        return torch.tensor([ids], device=self._device, dtype=torch.long)
-
-    def decode(self, ids: torch.Tensor | list[int]) -> str:
-        "Inverse of :py:meth:`encode`. Removes special tokens."
-        return "decoded"
-
-    def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:
-        "
-        # Given a list of input token ids, return the raw logits
-        # (no softmax) for the next token.
-        "
-        return [float(x/2) for x in range(1, 24)]
-
-    def get_path_to_vocab_file(self) -> str:
-        return "vocab_path"
-
-    def get_path_to_merges_file(self) -> str:
-        return "merges_path"
-
-    def get_path_to_tokenizer_file(self) -> str:
-        return "merges_path"
 """

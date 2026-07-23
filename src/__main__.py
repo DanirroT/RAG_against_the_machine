@@ -1,11 +1,15 @@
 import sys
-from src import (val_args, FunctCallLLM)
+from src import (val_args, FunctCallLLM, error_processing)
+from pydantic import ValidationError
 
 
 def main(args: list[str]) -> None:
 
     try:
         arg_inputs = val_args(args)
+    except ValidationError as e:
+        error_processing(e.errors())
+        return
     except ValueError as e:
         print(f"Arguments passed incorrectly: {e}")
         return

@@ -2,33 +2,38 @@
 # from typing import Any
 
 from src import InputHolder
+from pydantic_core import ErrorDetails
 
 
 def val_args(args: list[str]) -> dict[str, str]:
 
-    argc = len(args)
+    # argc = len(args)
 
     if (args[1] in ['index',  # Index the repository
                     'search',  # Search for a single query
-                    'search_dataset',  # Process multiple questions and output search results
+                    'search_dataset',
+                    # Process multiple questions and output search results
                     'answer',  # Answer a single question with context
                     'answer_dataset',  # Generate answers from search results
                     'evaluate',  # Evaluate search results against ground truth
                     ]):
         mode = args[1]
     else:
-        raise ValueError(f"Unknow First Argument: {args[1]}\n"
+        raise ValueError(f"Unknown First Argument: {args[1]}\n"
                          "Must be: 'ingest', 'search', 'answer' or 'evaluate'")
 
-    inputs: dict[str, int | str] = {
+    inputs: dict[str, str] = {
         "mode": mode,
-        "max_chunk_size": 2000,
-        "dataset_path": "data/datasets/UnansweredQuestions/dataset_docs_public.json",
-        "k": 10,
+        "max_chunk_size": "2000",
+        "dataset_path": ("data/datasets/UnansweredQuestions/"
+                         "dataset_docs_public.json"),
+        "k": "10",
         "save_directory": "data/output/search_results",
-        "student_answer_path": "data/output/search_results/dataset_docs_public.json",
-        "max_context_length": 2000,
-        "student_search_results_path": "data/output/search_results/dataset_docs_public.json",
+        "student_answer_path": ("data/output/search_results/"
+                                "dataset_docs_public.json"),
+        "max_context_length": "2000",
+        "student_search_results_path": ("data/output/search_results/"
+                                        "dataset_docs_public.json"),
         "question": ""
     }
     fail: bool = False
@@ -62,7 +67,7 @@ def val_args(args: list[str]) -> dict[str, str]:
     if fail:
         raise ValueError("\nProgram Stopped")
 
-    return InputHolder(**inputs)
+    return InputHolder(**inputs)  # pyright: ignore
 
 
 def ft_repr(s: str) -> str:
@@ -81,3 +86,144 @@ def ft_repr(s: str) -> str:
         else:
             out += char
     return out
+
+
+def str_error(error_type: str, field: str, msg: str, input_raw: str,
+              expected: int | None) -> None:
+
+    input_processed = len(input_raw)
+
+    if error_type == "string_too_short":
+        if not input_processed:
+            print(f"'{field}' cannot be empty.")
+        else:
+            print(
+                f"'{field}' should be larger than or equal to {expected}",
+                f"char. Got {input_processed}")
+    elif error_type == "string_too_long":
+        print(
+            f"'{field}' should be smaller than or equal to {expected} char.",
+            f"Got {input_processed}")
+    else:
+        print("Unknown Error:", msg)
+
+
+def int_error(error_type: str, field: str, msg: str, input_raw: int,
+              expected: int | None) -> None:
+
+    input_processed = input_raw
+
+    if error_type == "int_parsing":
+        print(f"'{field}' must an integer. Got {input_processed}")
+    elif error_type == "less_than_equal":
+        if expected == 0:
+            print(
+                f"'{field}' must be positive. Got {input_processed}")
+        else:
+            print(
+                f"'{field}' should be less than or equal to {expected}.",
+                f"Got {input_processed}")
+    elif error_type == "greater_than_equal":
+        if expected == 0:
+            print(
+                f"'{field}' must be negative. Got {input_processed}")
+        else:
+            print(
+                f"'{field}' should be greater than or equal to {expected}.",
+                f"Got {input_processed}")
+    else:
+        print("Unknown Error:", msg)
+
+
+def float_error(error_type: str, field: str, msg: str, input_raw: float,
+                expected: float | None) -> None:
+
+    input_processed = input_raw
+
+    if error_type == "float_parsing":
+        print(f"'{field}' must a number. Got {input_processed}")
+    elif error_type == "less_than_equal":
+        if expected == 0:
+            print(
+                f"'{field}' must be positive. Got {input_processed}")
+        else:
+            print(
+                f"'{field}' should be less than or equal to {expected}.",
+                f"Got {input_processed}")
+    elif error_type == "greater_than_equal":
+        if expected == 0:
+            print(
+                f"'{field}' must be negative. Got {input_processed}")
+        else:
+            print(f"'{field}' should be greater than or equal to {expected}.",
+                  f"Got {input_processed}")
+    else:
+        print("Unknown Error:", msg)
+
+
+# if (min == 0 and max == 100
+#    and field_float < min and field_float > max):
+#    print("SpaceStation Oxygen Level be a percentage.")
+
+
+def bool_error(error_type: str, field: str, msg: str, input_raw: bool) -> None:
+
+    input_processed = input_raw
+
+    if error_type == "bool_parsing":
+        print(f"'{field}' must a valid boolean. Got {input_processed}")
+    else:
+        print("Unknown Error:", msg)
+
+
+# def date_error(error_type: str, field: str, msg: str, input_raw: date,
+#                expected: str | None) -> None:
+
+#     input_processed = input_raw
+
+#     if error_type == "date_from_datetime_parsing":
+#         print(f"'{field}' must be a valid date. Got {input_processed}")
+#     else:
+#         print("Unknown Error:", msg)
+
+
+def error_processing(error_details: list[ErrorDetails]) -> None:
+
+    print()
+    print()
+    print("\n".join(map(str, error_details)))
+    print("ALL:", error_details, sep="\n")
+    print()
+    print()
+
+    for error in error_details:
+
+        print()
+        print("current:", error)
+        print()
+
+        error_type = error["type"]
+        field = error["loc"][0]
+        msg = error["msg"]
+        input = error["input"]
+        get_expected = error.get("ctx")
+        print("get expected:", get_expected)
+        expected = (list(get_expected.values())[0]
+                    if get_expected else get_expected)
+
+        print("unpacked:", error_type, field, msg, input, expected)
+        print()
+
+        if field in ["mode", "dataset_path", "save_directory",
+                     "student_answer_path", "student_search_results_path",
+                     "question"]:
+            str_error(error_type, field, msg,
+                      input, expected)  # pyright: ignore
+        elif field in ["max_chunk_size", "max_context_length"]:
+            int_error(error_type, field, msg,
+                      input, expected)  # pyright: ignore
+        elif field in ["k"]:
+            float_error(error_type, field, msg,
+                        input, expected)  # pyright: ignore
+        else:
+            print("Unknown error:", error)
