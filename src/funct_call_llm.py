@@ -1,72 +1,189 @@
 import sys
 import os
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
+from tqdm import tqdm
+from pathlib import Path
+from shutil import rmtree
 import httpcore
 from typing import Any, cast
 import json
-from src import (ft_repr,
-                 DefFunctException, FunctDef, Parameter
+import ast
+from markdown_it import MarkdownIt
+from src import (get_from_json_file, create_file, create_dir, ft_repr,
+                 InputHolder
                  )
-from llm_sdk import Small_LLM_Model
+# from llm_sdk import Small_LLM_Model
 
 
-class FunctCallLLM():
+class RAGCodeBaseLLM():
 
-    raw_prompts: list[str]
-    funct_defs: list[FunctDef]
-    output_path: str
+    dataset: dict[str, Any]
 
-    _llm: Small_LLM_Model
-    llm_files: dict[str, str]
+    save_directory: Path
+    student_answer_path: Path
+    student_search_results_path: Path
 
-    vocab_text_int: dict[str, int]
-    vocab_int_text: dict[int, str]
+    # raw_prompts: list[str]
+    # funct_defs: list[FunctDef]
 
-    tokenized_int_funct_list: list[list[int]]
-    instructions: list[int]
-    universal_start: list[int]
-    universal_post_prompt: list[int]
+    # _llm: Small_LLM_Model
+    # llm_files: dict[str, str]
 
-    to_export: (str |
-                dict[str, str | dict[str, Any]] |
-                list[str | dict[str, str | dict[str, Any]]])
+    # vocab_text_int: dict[str, int]
+    # vocab_int_text: dict[int, str]
 
-    def __init__(self, arg_inputs: dict[str, str]) -> None:
+    # tokenized_int_funct_list: list[list[int]]
+    # instructions: list[int]
+    # universal_start: list[int]
+    # universal_post_prompt: list[int]
+
+    # to_export: (str |
+    #             dict[str, str | dict[str, Any]] |
+    #             list[str | dict[str, str | dict[str, Any]]])
+
+    # mode: str = Field()
+    # max_chunk_size: int = Field(gt=0)
+    # dataset_path: str = Field(min_length=1)
+    # k: float = Field(gt=0, lt=1)
+    # save_directory: str = Field(min_length=1)
+    # student_answer_path: str = Field(min_length=1)
+    # max_context_length: int = Field(gt=0)
+    # student_search_results_path: str = Field(min_length=1)
+    # question: str = Field()
+
+    def __init__(self, arg_inputs: InputHolder, mode: bool = True) -> None:
+
+        force = True
 
         if arg_inputs:
-            try:
-                self._get_prompts(arg_inputs["input"])
-            except FileNotFoundError:
-                raise
+            print("arg_inputs Exists")
 
-            try:
-                self._get_funct_defs(arg_inputs["functions_definition"])
-            except FileNotFoundError:
-                raise
+            self.save_directory = create_dir(
+                arg_inputs.save_directory, force)
+            print(f"{self.save_directory} Created")
 
-            try:
-                self._create_output_file(arg_inputs["output"])
-            except FileExistsError:
-                raise
+            if arg_inputs.mode == "answer":
+                self.student_answer_path = create_file(
+                    arg_inputs.student_answer_path, force)
+                print(f"{self.student_answer_path} Created")
+
+            if arg_inputs.mode == "search":
+                self.student_search_results_path = create_file(
+                    arg_inputs.student_search_results_path, force)
+                print(f"{self.student_search_results_path} Created")
+
+            self.dataset = get_from_json_file(arg_inputs.dataset_path)
+            print(f"{arg_inputs.dataset_path} Loaded")
+
+        else:
+            raise ValueError("No Arguments were passed to the Class")
+
+        if arg_inputs.mode == "index":
+            input_dir_str = "data/to_process/"
+            output_dir_str = "data/processed/"
+
+            input_dir_path = Path(input_dir_str)
+            if not input_dir_path.exists():
+                raise ValueError(f"Path '{input_dir_str}' does not exist")
+            if not input_dir_path.is_dir():
+                raise ValueError(f"Path '{input_dir_str}' is not a Directory")
+
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                # if not output_dir_path.is_dir():
+                #     answer = input(
+                #         f"'{output_dir_str}' exists but is not a directory."
+                #         "\nReplace it with a directory? [y/N]: "
+                #     ).strip().lower()
+                # else:
+                #     answer = input(
+                #         f"Directory '{output_dir_str}' already exists.\n"
+                #         "Overwrite its contents? [y/N]: "
+                #     ).strip().lower()
+
+                # if answer != "y":
+                #     print("Operation cancelled.")
+                #     raise FileExistsError
+                # else:
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+                output_dir_path.mkdir(parents=True)
+            else:
+                output_dir_path.mkdir(parents=True)
+
+            self._ingest(input_dir_path, output_dir_path)
+            print(f"Ingestion complete! Indices saved under {output_dir_str}")
+            return
+
+        elif arg_inputs.mode == "answer":
+            output_dir_str = ""
+            self._str_answer(output_dir)
+
+        elif arg_inputs.mode == "answer_dataset":
+            output_dir_str = ""
+            self._file_answer(output_dir)
+
+        elif arg_inputs.mode == "search":
+            output_dir_str = ""
+            self._str_search(output_dir)
+
+        elif arg_inputs.mode == "search_dataset":
+            output_dir_str = ""
+            self._file_search(output_dir)
+
+        elif arg_inputs.mode == "evaluate":
+            output_dir_str = ""
+            self._evaluate(output_dir)
+
+        # try:
+        #     self._load_llm(mode)
+        # except ModuleNotFoundError as e:
+        #     raise ModuleNotFoundError(
+        #         f"Module Dependencies were not met:\n{e}")
+        # except httpcore.ConnectError as e:
+        #     raise httpcore.ConnectError(
+        #         "Small_LLM_Model was unable to Connect. "
+        #         f"Check Connection and Try again another time\n{e}")
+
+        # except Exception as e:
+        #     raise Exception("An unexpected error has occurred during "
+        #                     f"LLM Class Creation:\n{e}")
+
+        # try:
+
+        #     self._make_deffunct_ids()
+
+        # except DefFunctException as e:
+        #     error_len = e.e_len
+        #     del e.e_len
+        #     raise ValueError("An error has occurred in the Processing of "
+        #                      f"Callable Function number {error_len}: "
+        #                      f"{self.funct_defs[error_len]}:\n\n{e}")
+
+    def redefine_inputs(self, arg_inputs: InputHolder) -> None:
+
+        if arg_inputs:
+            print("arg_inputs Exists")
+
+            self.save_directory = create_dir(
+                arg_inputs.save_directory)
+            print(f"{self.save_directory} Created")
+            self.student_answer_path = create_file(
+                arg_inputs.student_answer_path)
+            print(f"{self.student_answer_path} Created")
+            self.student_search_results_path = create_file(
+                arg_inputs.student_search_results_path)
+            print(f"{self.student_search_results_path} Created")
+
+            self.dataset = get_from_json_file(arg_inputs.dataset_path)
+            print(f"{self.dataset} Loaded")
 
         else:
             raise ValueError("No Arguments were passed to the Class")
 
         try:
-            self._load_llm()
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                f"Module Dependencies were not met:\n{e}")
-        except httpcore.ConnectError as e:
-            raise httpcore.ConnectError(
-                "Small_LLM_Model was unable to Connect. "
-                f"Check Connection and Try again another time\n{e}")
-
-        except Exception as e:
-            raise Exception("An unexpected error has occurred during "
-                            f"LLM Class Creation:\n{e}")
-
-        try:
 
             self._make_deffunct_ids()
 
@@ -77,102 +194,55 @@ class FunctCallLLM():
                              f"Callable Function number {error_len}: "
                              f"{self.funct_defs[error_len]}:\n\n{e}")
 
-    def redefine_inputs(self, arg_inputs: dict[str, str]) -> None:
+    def _ingest(self, input_dir_path: Path, output_dir_path: Path) -> None:
 
-        try:
-            self._get_prompts(arg_inputs["input"])
-        except FileNotFoundError:
-            raise
+        print("input:", input_dir_path)
 
-        try:
-            self._get_funct_defs(arg_inputs["functions_definition"])
-        except FileNotFoundError:
-            raise
+        md_parse = MarkdownIt()
 
-        try:
-            self._create_output_file(arg_inputs["output"])
-        except FileExistsError:
-            raise
+        ingest_out: dict[str, dict[str, str | list[Any]]] = {}
 
-        try:
+        print("\n\n")
+        for path in input_dir_path.rglob("*"):
+            print(path)
+            if path.is_dir():
+                continue
+            if path.is_file():
+                with path.open("r") as file:
+                    file_str = file.read()
+                if str(path).endswith(".py"):
+                    file_out_lists: dict[str, str | list[Any]] = {"type": "Python",
+                                                                  "name": str(path),
+                                                                  "imports": [],
+                                                                  "functs": [],
+                                                                  "classes": []}
+                    parsed = ast.parse(file_str)
+                    print(ast.dump(parsed, indent=4), end="\n\n\n")
+                    for item in parsed.body:
+                        print(item)
+                        if isinstance(item, ast.Import):
+                            file_out_lists["imports"].append(item)
+                        if isinstance(item, ast.FunctionDef):
+                            file_out_lists["functs"].append(item)
+                        if isinstance(item, ast.ClassDef):
+                            file_out_lists["classes"].append(item)
 
-            self._make_deffunct_ids()
+                elif str(path).endswith(".md"):
+                    file_out_lists = {"Type": "MarkDown", "name": str(path),
+                                      "Introduction": [], "Sections": []}
+                    print(md_parse.parse(file_str))
+                else:
+                    file_out_lists = {"Type": "Other", "name": str(path),
+                                      "Sections": []}
+                    print(file_str)
+            print("\n\n")
+            ingest_out[str(path)] = file_out_lists
 
-        except DefFunctException as e:
-            error_len = e.e_len
-            del e.e_len
-            raise ValueError("An error has occurred in the Processing of "
-                             f"Callable Function number {error_len}: "
-                             f"{self.funct_defs[error_len]}:\n\n{e}")
+        print(ingest_out)
 
-    def _get_prompts(self, file_name: str) -> None:
-        try:
-            with open(file_name) as input_file:
-                parsed_inputs = json.load(input_file)
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"Input File \"{file_name}\""
-                                    f" not found {e}")
+        print("output:", output_dir_path)
 
-        self.raw_prompts = [ft_repr(obj["prompt"]) for obj in parsed_inputs]
-
-    def _get_funct_defs(self, file_name: str) -> None:
-        try:
-            with open(file_name) as funct_def_file:
-                parsed_funct_defs: list[dict[str, Any]] = (
-                    json.load(funct_def_file))
-        except FileNotFoundError as e:
-            raise FileNotFoundError(
-                f"Functions Definition File \"{file_name}\" not found {e}")
-
-        self.funct_defs = []
-
-        for funct in parsed_funct_defs:
-            params: list[Parameter] = []
-            if len(funct["parameters"]):
-                for name, type_dict in funct["parameters"].items():
-                    params.append(Parameter(p_name=name,
-                                            p_type=type_dict["type"]))
-
-            self.funct_defs.append(FunctDef(
-                name=funct["name"],
-                description=funct["description"],
-                parameters=params,
-                returns=funct["returns"]["type"]
-            ))
-
-    def _create_output_file(self, file_name: str) -> None:
-
-        self.output_path = file_name
-
-        if "/" in file_name:
-            last_slash = 0
-            i = 0
-            for char in file_name:
-                if char == "/":
-                    last_slash = i
-                i += 1
-
-            path = file_name[:last_slash]
-
-            try:
-                os.makedirs(path)
-            except FileExistsError:
-                pass
-
-        try:
-            with open(file_name, "x"):
-                pass
-        except FileExistsError:
-            print(f"File \"{file_name}\" "
-                  "already exists, do you wish to replace it?")
-            answer = input("Y for 'yes', any for 'no': ").lower()
-            if not answer == "y":
-                print("Stopping Program")
-                raise
-            else:
-                print("Continuing...")
-
-    def _load_llm(self) -> None:
+    def _load_llm(self, mode: bool = True) -> None:
 
         self.llm_files = {}
         print()

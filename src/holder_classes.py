@@ -8,7 +8,7 @@ class InputHolder(BaseModel):
     mode: str = Field()
     max_chunk_size: int = Field(gt=0)
     dataset_path: str = Field(min_length=1)
-    k: float = Field(gt=0, lt=1)
+    k: float = Field(gt=0)
     save_directory: str = Field(min_length=1)
     student_answer_path: str = Field(min_length=1)
     max_context_length: int = Field(gt=0)

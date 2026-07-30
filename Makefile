@@ -6,13 +6,15 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/07/22 17:04:05 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/07/24 19:51:54 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = RAG_against_the_machine
 
-# DEPENDENCIES = pydantic mypy flake8 protobuf accelerate dotenv
+## DEPENDENCIES = pydantic mypy flake8 protobuf accelerate dotenv
+
+# DEPENDENCIES = pydantic mypy flake8 fire httpcore tqdm
 
 # Extra?? - protobuf, accelerate
 
@@ -20,6 +22,9 @@ NAME = RAG_against_the_machine
 
 # nameserver 8.8.8.8
 # nameserver 1.1.1.1
+
+
+# figure out what is " Your system must provide a Command-Line Interface (CLI) using Python Fire"
 
 SRC = src
 
@@ -36,12 +41,12 @@ RM = rm -fr
 .ONESHELL:
 
 run:
-	@time $(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
+	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
 
 NOW = $(shell date +%m-%d_%H:%M)
 
 record:
-	@time $(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS)) | tee Historic/$(NOW).log
+	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS)) | tee Historic/$(NOW).log
 	@echo "\n\nOutput_file:\n\n" >> Historic/$(NOW).log
 	@cat data/output/function_calls.json >> Historic/$(NOW).log
 
