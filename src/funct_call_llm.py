@@ -119,23 +119,23 @@ class RAGCodeBaseLLM():
 
         elif arg_inputs.mode == "answer":
             output_dir_str = ""
-            self._str_answer(output_dir)
+            self._str_answer(input_dir_path, output_dir_path)
 
         elif arg_inputs.mode == "answer_dataset":
             output_dir_str = ""
-            self._file_answer(output_dir)
+            self._file_answer(input_dir_path, output_dir_path)
 
         elif arg_inputs.mode == "search":
             output_dir_str = ""
-            self._str_search(output_dir)
+            self._str_search(input_dir_path, output_dir_path)
 
         elif arg_inputs.mode == "search_dataset":
             output_dir_str = ""
-            self._file_search(output_dir)
+            self._file_search(input_dir_path, output_dir_path)
 
         elif arg_inputs.mode == "evaluate":
             output_dir_str = ""
-            self._evaluate(output_dir)
+            self._evaluate(input_dir_path, output_dir_path)
 
         # try:
         #     self._load_llm(mode)
@@ -221,11 +221,17 @@ class RAGCodeBaseLLM():
                     for item in parsed.body:
                         print(item)
                         if isinstance(item, ast.Import):
-                            file_out_lists["imports"].append(item)
+                            file_out_lists["imports"].append(item.names[0].name)
                         if isinstance(item, ast.FunctionDef):
-                            file_out_lists["functs"].append(item)
+                            file_out_lists["functs"].append({"name": item.name,
+                                                             "args": [arg.arg for arg in item.args.args],
+                                                             "returns": ast.unparse(item.returns) if item.returns else None,
+                                                             "docstring": ast.get_docstring(item),
+                                                             "body": item.body})
                         if isinstance(item, ast.ClassDef):
-                            file_out_lists["classes"].append(item)
+                            file_out_lists["classes"].append({"name": item.name,
+                                                              "docstring": ast.get_docstring(item),
+                                                              "body": ast.unparse(item.body)})
 
                 elif str(path).endswith(".md"):
                     file_out_lists = {"Type": "MarkDown", "name": str(path),
@@ -238,7 +244,7 @@ class RAGCodeBaseLLM():
             print("\n\n")
             ingest_out[str(path)] = file_out_lists
 
-        print(ingest_out)
+        print("\n\n".join(k + ":\n" + "\n".join(f"  {k1}: {v2}" for k1, v2 in v.items()) for k, v in ingest_out.items()))
 
         print("output:", output_dir_path)
 
@@ -546,3 +552,55 @@ class RAGCodeBaseLLM():
         else:
             return "".join([self.vocab_int_text[i] for i in ids]
                            ).replace("Ċ", "\n").replace("Ġ", " ")
+
+
+
+# FunctionDef(name='val_args',
+#             args=arguments(posonlyargs=[],
+#                            args=[arg(arg='args',
+#                                      annotation=Subscript(...),
+#                                      type_comment=None)],
+#                                      vararg=None,
+#                                      kwonlyargs=[],
+#                                      kw_defaults=[],
+#                                      kwarg=None,
+#                                      defaults=[]),
+#             body=[If(test=Compare(left=Subscript(...),
+#                                 ops=[In(...)],
+#                                 comparators=[List(...)]),
+#                                 body=[Assign(targets=[Name(...)],
+#                                 value=ast.Subscript(...),
+#                                 type_comment=None)],
+#                                 orelse=[ast.Raise(exc=ast.Call(...), cause=None)]),
+#             ...,
+#             Return(value=Call(func=Name(...),
+#                                     args=[], keywords=[keyword(...)]))],
+#                                     decorator_list=[],
+#                                     returns=Name(id='InputHolder',
+#                                                 ctx=Load()),
+#                                                 type_comment=None,
+#                                                 type_params=[]),
+# FunctionDef(name='get_from_json_file',
+#             args=arguments(posonlyargs=[],
+#                            args=[arg(arg='file_path',
+#                                      annotation=Name(...),
+#                                      type_comment=None)],
+#                                      vararg=None,
+#                                      kwonlyargs=[],
+#                                      kw_defaults=[],
+#                                      kwarg=None,
+#                                      defaults=[]),
+#             body=[With(items=[withitem(context_expr=Call(...),
+#                                        optional_vars=Name(...))],
+#                         body=[Assign(targets=[Name(...)],
+#                                      value=Call(...), type_comment=None)],
+#                         type_comment=None),
+#                         Return(value=Name(id='output', ctx=Load(...)))], decorator_list=[], returns=Name(id='Any', ctx=Load()), type_comment=None, type_params=[]),
+
+# FunctionDef(name='create_file', args=arguments(posonlyargs=[], args=[arg(arg='file_name', annotation=Name(...), type_comment=None), arg(arg='force', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[Constant(value=False, kind=None)]), body=[Assign(targets=[Name(id='file_path', ctx=Store(...))], value=Call(func=Name(...), args=[Name(...)], keywords=[]), type_comment=None), ..., Return(value=Name(id='file_path', ctx=Load(...)))], decorator_list=[], returns=Name(id='Path', ctx=Load()), type_comment=None, type_params=[]), FunctionDef(name='create_dir', args=arguments(posonlyargs=[], args=[arg(arg='dir_name', annotation=Name(...), type_comment=None), arg(arg='force', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[Constant(value=False, kind=None)]), body=[Assign(targets=[Name(id='dir_path', ctx=Store(...))], value=Call(func=Name(...), args=[Name(...)], keywords=[]), type_comment=None), ..., Return(value=Name(id='dir_path', ctx=Load(...)))], decorator_list=[], returns=Name(id='Path', ctx=Load()), type_comment=None, type_params=[]), FunctionDef(name='ft_repr', args=arguments(posonlyargs=[], args=[arg(arg='s', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=[AnnAssign(target=Name(id='out', ctx=Store(...)), annotation=Name(id='str', ctx=Load(...)), value=Constant(value='', kind=None), simple=1), ..., Return(value=Name(id='out', ctx=Load(...)))], decorator_list=[], returns=Name(id='str', ctx=Load()), type_comment=None, type_params=[])
+
+
+functs: [{'name': 'val_args', 'args': ['args'], 'returns': 'InputHolder', 'docstring': None,
+          'body':
+            'if args[1] in [\'index\', \'search\', \'search_dataset\', \'answer\', \'answer_dataset\', \'evaluate\']:\n    mode = args[1]\nelse:\n    raise ValueError(f"Unknown First Argument: {args[1]}\\nMust be: \'ingest\', \'search\', \'answer\' or \'evaluate\'")\ninputs: dict[str, str] = {\'mode\': mode, \'max_chunk_size\': \'2000\', \'dataset_path\': \'data/datasets/UnansweredQuestions/dataset_docs_public.json\', \'k\': \'10\', \'save_directory\': \'data/output/search_results\', \'student_answer_path\': \'data/output/search_results/dataset_docs_public.json\', \'max_context_length\': \'2000\', \'student_search_results_path\': \'data/output/search_results/dataset_docs_public.json\', \'question\': \'\'}\nfail: bool = False\nnext_ins: None | str = None\nfor arg in args[1:]:\n    if next_ins:\n        inputs[next_ins] = arg\n        next_ins = None\n        continue\n    elif arg is args[2] and inputs[\'mode\'] == \'answer\':\n        inputs[\'question\'] = arg\n    elif arg in [\'--max_chunk_size\', \'--dataset_path\', \'--k\', \'--save_directory\', \'--student_answer_path\', \'--max_context_length\', \'--student_search_results_path\']:\n        next_ins = arg[2:]\n    elif arg.startswith(\'--\'):\n        print(f\'Error: Unknown Parameter: {arg}\')\n        fail = True\n        break\n    else:\n        print(\'Error: Unknown Argument\')\n        fail = True\n        break\nif fail:\n    raise ValueError(\'\\nProgram Stopped\')\nreturn InputHolder(**inputs)'},
+         {'name': 'get_from_json_file', 'args': ['file_path'], 'returns': 'Any', 'docstring': None, 'body': 'with open(file_path) as file_obj:\n    output = json.load(file_obj)\nreturn output'}, {'name': 'create_file', 'args': ['file_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'file_path = Path(file_name)\nif file_path.exists():\n    if not force:\n        print(f"File \'{file_name}\' already exists, do you wish to replace it?")\n        answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n        if answer != \'y\':\n            print(\'Stopping Program\')\n            raise FileExistsError(file_name)\n        print(\'Continuing...\')\n    if file_path.is_file():\n        file_path.unlink()\n    elif file_path.is_dir():\n        if not force:\n            print(f"\'{file_name}\' is a directory are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise IsADirectoryError(file_path)\n        rmtree(file_path)\n    else:\n        raise ValueError(\'Unsupported path type\')\nfile_path.parent.mkdir(parents=True, exist_ok=True)\nwith file_path.open(\'x\'):\n    pass\nreturn file_path'}, {'name': 'create_dir', 'args': ['dir_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'dir_path = Path(dir_name)\nif dir_path.exists():\n    if not force:\n        print(f"Directory \'{dir_name}\' already exists, do you wish to replace it?")\n        answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n        if answer != \'y\':\n            print(\'Stopping Program\')\n            raise FileExistsError(dir_name)\n        print(\'Continuing...\')\n    if dir_path.is_file():\n        if not force:\n            print(f"\'{dir_name}\' is a file are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise FileExistsError(dir_path)\n        dir_path.unlink()\n    elif dir_path.is_dir():\n        if not force:\n            print(f"\'{dir_name}\' is a directory are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise IsADirectoryError(dir_path)\n        rmtree(dir_path)\n    else:\n        raise ValueError(\'Unsupported path type\')\ndir_path.mkdir(parents=True)\nreturn dir_path'}, {'name': 'ft_repr', 'args': ['s'], 'returns': 'str', 'docstring': None, 'body': 'out: str = \'\'\nfor char in s:\n    if char in [\'"\', \'\\\\\']:\n        out += \'\\\\\' + char\n    elif char == \'\\n\':\n        out += \'\\n\'\n    elif char == \'\\t\':\n        out += \'\\t\'\n    elif char == \'\\x00\':\n        out += \'\\x00\'\n    elif char == \'\\x0b\':\n        out += \'\\x0b\'\n    else:\n        out += char\nreturn out'}]
