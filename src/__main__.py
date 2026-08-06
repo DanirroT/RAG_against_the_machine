@@ -1,6 +1,7 @@
 import sys
-from src import (val_args, RAGCodeBaseLLM, error_processing, InputHolder)
-from pydantic import ValidationError
+from src import (RAGCodeBaseLLM, InputHolder)
+# from src import (val_args, RAGCodeBaseLLM, error_processing)
+# from pydantic import ValidationError
 
 
 def main(args: list[str]) -> None:
@@ -39,21 +40,21 @@ def main(args: list[str]) -> None:
     except FileNotFoundError as e:
         print(f"File not found: {e}")
         return
-    except ValueError as e:
-        print(e)
-        return
-    except ModuleNotFoundError as e:
-        print("Module Dependencies were not met:\n"
-              f"{e}")
-        return
-    except TypeError as e:
-        print("An error has occurred while building"
-              f" 'RAGCodeBaseLLM':\n{e}")
-        return
-    except Exception as e:
-        print("An error has occurred while building"
-              f" 'RAGCodeBaseLLM':\n{e}")
-        return
+    # except ValueError as e:
+    #     print(e)
+    #     return
+    # except ModuleNotFoundError as e:
+    #     print("Module Dependencies were not met:\n"
+    #           f"{e}")
+    #     return
+    # except TypeError as e:
+    #     print("An error has occurred while building"
+    #           f" 'RAGCodeBaseLLM':\n{e}")
+    #     return
+    # except Exception as e:
+    #     print("An error has occurred while building"
+    #           f" 'RAGCodeBaseLLM':\n{e}")
+        # return
 
     # try:
     #     funct_caller.run_model()

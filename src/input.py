@@ -1,5 +1,5 @@
 # import sys
-# from typing import Any
+from typing import cast
 
 from src import InputHolder
 from pydantic_core import ErrorDetails
@@ -301,12 +301,15 @@ def error_processing(error_details: list[ErrorDetails]) -> None:
         if field in ["mode", "dataset_path", "save_directory",
                      "student_answer_path", "student_search_results_path",
                      "question"]:
+            expected = cast(str, expected)
             str_error(error_type, field, msg,
                       input, expected)  # pyright: ignore
         elif field in ["max_chunk_size", "max_context_length"]:
+            expected = cast(int, expected)
             int_error(error_type, field, msg,
                       input, expected)  # pyright: ignore
         elif field in ["k"]:
+            expected = cast(float, expected)
             float_error(error_type, field, msg,
                         input, expected)  # pyright: ignore
         else:

@@ -1,4 +1,6 @@
 from pydantic import BaseModel, Field, model_validator  # , field_validator
+from abc import ABC, abstractmethod
+from pathlib import Path
 # from enum import Enum
 # from typing import Any, TypedDict
 
@@ -29,6 +31,222 @@ class InputHolder(BaseModel):
                              f" {self.dataset_path}")
 
         return (self)
+
+
+class FileHolder(ABC):
+
+    path: Path
+
+    @abstractmethod
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+
+class FunctHolder():
+
+    name: str
+    start_line: int
+    end_line: int
+    args: list[str]
+    returns: str
+    docstring: str | None
+    body: str
+
+    def __init__(self, name: str,
+                 start_line: int,
+                 end_line: int,
+                 args: list[str],
+                 returns: str,
+                 body: str,
+                 docstring: str | None = None) -> None:
+        self.name = name
+        self.start_line = start_line
+        self.end_line = end_line
+        self.args = args
+        self.returns = returns
+        self.docstring = docstring
+        self.body = body
+
+    def __str__(self) -> str:
+        return (
+            f"\"name\": {self.name}\t"
+            f"\"args\":\t({' '.join(self.args)})\n" +
+            ((f"\"docstring\":\t{self.docstring}\n")
+             if self.docstring else "") +
+            f"start in {self.start_line}, end at {self.end_line}\n"
+            f"\"returns\":\t{self.returns}\n"
+            f"\"body\":\n{self.body}\n"
+        )
+
+
+class ClassHolder():
+
+    name: str
+    start_line: int
+    end_line: int
+    inherits: list[str]
+    docstring: str
+    var_annotations: list[str]
+    methods: list[FunctHolder]
+
+    def __init__(self, name: str,
+                 start_line: int,
+                 end_line: int,
+                 docstring: str,
+                 inherits: list[str],
+                 var_annotations: list[str] | None = None,
+                 methods: list[FunctHolder] | None = None) -> None:
+        self.name = name
+        self.start_line = start_line
+        self.end_line = end_line
+        self.docstring = docstring
+        self.inherits = inherits
+        self.var_annotations = (var_annotations
+                                if var_annotations is not None else [])
+        self.methods = methods if methods is not None else []
+
+    def __str__(self) -> str:
+        return (
+            f"\"name\": {self.name}" +
+            ((f"\t\"inherits\":\t{self.inherits}") if self.inherits else "") +
+            ((f"\n\"docstring\":\t{self.docstring}")
+             if self.docstring else "") +
+            f"\tstart in {self.start_line}, end at {self.end_line}"
+            f"\n\"vars\":\n{', '.join(self.var_annotations)}"
+            f"\n\n\"methods\":\n{'\n\n'.join(map(str, self.methods))}\n"
+        )
+
+
+class PyHolder(FileHolder):
+    imports: list[str]
+    functs: list[FunctHolder]
+    classes: list[ClassHolder]
+
+    def __init__(self, path: Path,
+                 imports: list[str] | None = None,
+                 functs: list[FunctHolder] | None = None,
+                 classes: list[ClassHolder] | None = None) -> None:
+        super().__init__(path)
+        self.imports = imports if imports is not None else []
+        self.functs = functs if functs is not None else []
+        self.classes = classes if classes is not None else []
+
+    def __str__(self) -> str:
+        return (
+            f"\"path\": {self.path}\n"
+            f"\"imports\":\t{'\n\t\t'.join(self.imports)}\n"
+            f"\"functs\":\n{'\n\n'.join(map(str, self.functs))}\n\n"
+            f"\"classes\":\n{'\n\n\n'.join(map(str, self.classes))}\n"
+        )
+
+    # def __dict__(self) -> dict[str, Any]:
+    #     return ({
+    #         "path": self.path,
+    #         "imports": self.imports,
+    #         "functs": self.functs,
+    #         "classes": self.classes,
+    #     })
+
+
+class MDSections:
+    name: str
+    start_line: int
+    end_line: int
+    tag: str
+    level: int
+    content: str
+    children: list["MDSections"]
+
+    def __init__(self, tag: str,
+                 level: int,
+                 name: str,
+                 start_line: int,
+                 end_line: int,
+                 content: str | None = None,
+                 children: list["MDSections"] | None = None) -> None:
+        self.tag = tag
+        self.level = level
+        self.name = name
+        self.start_line = start_line
+        self.end_line = end_line
+        self.content = content if content is not None else ""
+        self.children = children if children is not None else []
+
+    def __str__(self) -> str:
+        return (
+            f"\"tag\":\t{self.tag}\t"
+            f"\"lvl\":\t{self.level}\t"
+            f"\"name\": {self.name}\t"
+            f"start {self.start_line}\t"
+            f"end {self.end_line}\n"
+            f"{'\t\t' * self.level}\"content\": {self.content}\n" +
+            (("\t\t\"children\":\t"
+              f"{('\t\t\t\t').join(map(str, self.children))}\n")
+             if len(self.children) else "")
+        )
+
+    # def __dict__(self) -> dict[str, Any]:
+    #     return ({
+    #         "tag": self.tag,
+    #         "level": self.level,
+    #         "content": self.content,
+    #         "children": self.children,
+    #     })
+
+
+class MDHolder(FileHolder):
+    introduction: MDSections | None
+    sections: list[MDSections]
+
+    def __init__(self, path: Path,
+                 introduction: MDSections | None = None,
+                 sections: list[MDSections] | None = None) -> None:
+        super().__init__(path)
+        self.introduction = introduction
+        self.sections = sections if sections is not None else []
+
+    def __str__(self) -> str:
+        return (
+            f"\"path\": {self.path}\n"
+            f"\"introduction\": {self.introduction}\n"
+            f"\"sections\":\t{'\t\t'.join(map(str, self.sections))}\n"
+        )
+
+    # def __dict__(self) -> dict[str, Any]:
+    #     return ({
+    #         "path": self.path,
+    #         "sections": self.sections
+    #     })
+
+
+class OtherHolder(FileHolder):
+    sections: list[str]
+
+    def __init__(self, path: Path,
+                 sections: list[str] | None = None) -> None:
+        super().__init__(path)
+        self.sections = sections if sections is not None else []
+
+    def __str__(self) -> str:
+        return (
+            f"\"path\": {self.path}\n"
+            f"\"sections\":\t{'\n\t\t'.join(self.sections)}\n"
+        )
+
+    # def __dict__(self) -> dict[str, Any]:
+    #     return ({
+    #         "path": self.path,
+    #         "sections": self.sections
+    #     })
+
+
+class DefFunctException(Exception):
+
+    e_len: int
+
+    def __init__(self, e_len: int, *args: object) -> None:
+        super().__init__(*args)
+        self.e_len = e_len
 
 
 """
@@ -120,13 +338,4 @@ class FunctDef(BaseModel):
 # print(FunctDef(name="n", description="desc",
 #                parameters=[Parameter(p_name="a", p_type="number")],
 #                returns="number"))
-
-
-class DefFunctException(Exception):
-
-    e_len: int
-
-    def __init__(self, e_len: int, *args: object) -> None:
-        super().__init__(*args)
-        self.e_len = e_len
 """

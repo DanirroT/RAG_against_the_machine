@@ -1,11 +1,13 @@
 {
     "cSpell.words": [
         "aeiou",
+        "asname",
         "autoregressive",
         "deffunct",
         "dmota",
         "dotenv",
         "Funct",
+        "functs",
         "ĠĠĠĠ",
         "ĠĠĠĠĠĠĠĠ",
         "huggingface",
@@ -21,6 +23,7 @@
         "tokenswise",
         "tribeirinho",
         "ttab",
-        "venv"
+        "venv",
+        "vllm"
     ]
 }
