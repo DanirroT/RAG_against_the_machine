@@ -74,7 +74,6 @@ class RAGCodeBaseLLM():
 
             self.dataset = get_from_json_file(arg_inputs.dataset_path)
             print(f"{arg_inputs.dataset_path} Loaded")
-
         else:
             raise ValueError("No Arguments were passed to the Class")
 
@@ -387,6 +386,25 @@ class RAGCodeBaseLLM():
         print("\n".join(map(str, ingest_out)))
 
         print("output:", output_dir_path)
+
+        input("starting creation")
+        for obj in ingest_out:
+            print("original", obj.path)
+            relative_path = obj.path.relative_to(input_dir_path)
+            print("relative", relative_path)
+            json_path = output_dir_path / relative_path
+            print("output original", json_path)
+            json_path = json_path.with_suffix(json_path.suffix + ".json")
+            print("output suffix", json_path)
+            input()
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+            print("folder created")
+            with open(json_path, "w"):
+                pass
+            # with open(obj.path, "w") as file:
+            #     json.dump(obj.get_dict(), file)
+
+            print("file created")
 
     def _str_answer(self, query: str, output_dir_path: Path) -> None:
         pass

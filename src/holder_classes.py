@@ -41,6 +41,10 @@ class FileHolder(ABC):
     def __init__(self, path: Path) -> None:
         self.path = path
 
+    @abstractmethod
+    def to_dict(self) -> dict:
+        raise NotImplementedError
+
 
 class FunctHolder():
 
@@ -66,6 +70,17 @@ class FunctHolder():
         self.returns = returns
         self.docstring = docstring
         self.body = body
+
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "args": self.args,
+            "returns": self.returns,
+            "docstring": self.docstring,
+            "body": self.body,
+        }
 
     def __str__(self) -> str:
         return (
@@ -105,6 +120,17 @@ class ClassHolder():
                                 if var_annotations is not None else [])
         self.methods = methods if methods is not None else []
 
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "inherits": self.inherits,
+            "docstring": self.docstring,
+            "variable_annotations": self.var_annotations,
+            "methods": [method.to_dict() for method in self.methods],
+        }
+
     def __str__(self) -> str:
         return (
             f"\"name\": {self.name}" +
@@ -131,6 +157,14 @@ class PyHolder(FileHolder):
         self.functs = functs if functs is not None else []
         self.classes = classes if classes is not None else []
 
+    def to_dict(self) -> dict:
+        return {
+            "path": str(self.path),
+            "imports": self.imports,
+            "functs": [funct.to_dict() for funct in self.functs],
+            "classes": [class_.to_dict() for class_ in self.classes],
+        }
+
     def __str__(self) -> str:
         return (
             f"\"path\": {self.path}\n"
@@ -138,14 +172,6 @@ class PyHolder(FileHolder):
             f"\"functs\":\n{'\n\n'.join(map(str, self.functs))}\n\n"
             f"\"classes\":\n{'\n\n\n'.join(map(str, self.classes))}\n"
         )
-
-    # def __dict__(self) -> dict[str, Any]:
-    #     return ({
-    #         "path": self.path,
-    #         "imports": self.imports,
-    #         "functs": self.functs,
-    #         "classes": self.classes,
-    #     })
 
 
 class MDSections:
@@ -204,6 +230,13 @@ class MDHolder(FileHolder):
         super().__init__(path)
         self.introduction = introduction
         self.sections = sections if sections is not None else []
+
+    def to_dict(self) -> dict:
+        return {
+            "path": str(self.path),
+            "introduction": self.introduction.to_dict(),
+            "sections": [section.to_dict() for section in self.sections],
+        }
 
     def __str__(self) -> str:
         return (
