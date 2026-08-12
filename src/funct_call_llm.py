@@ -231,25 +231,29 @@ class RAGCodeBaseLLM():
 
                             for file_import in item.names:
                                 file_out_lists.imports.append(
-                                    item.module + "." +
-                                    file_import.name +
+                                    (item.module + ".") if item.module else ""
+                                    + file_import.name +
                                     ((" as " + file_import.asname)
                                      if file_import.asname else ""))
 
                         if isinstance(item, ast.FunctionDef):
-                            # print(item.name, item.args.defaults[0].__dict__ if item.args.defaults else "")
-                            # print(list(zip(item.args.args, item.args.defaults)))
+                            # print(item.name, item.args.defaults[0].__dict__
+                            #       if item.args.defaults else "")
+                            # print(list(zip(item.args.args,
+                            #       item.args.defaults)))
                             file_out_lists.functs.append(
                                 FunctHolder(
                                     item.name,
                                     item.lineno,
-                                    item.end_lineno,
+                                    item.end_lineno if item.end_lineno
+                                    else item.lineno,
                                     [arg.arg + ((" = " + str(defaults.value))
                                                 if str(defaults) == str(None)
                                                 else "")
                                      for arg, defaults in zip(
                                          item.args.args, item.args.defaults)],
-                                    str(ast.unparse(item.returns)),
+                                    str(ast.unparse(item.returns)
+                                        if item.returns else None),
                                     ast.get_source_segment(file_str, item),
                                     ast.get_docstring(item))
                             )
@@ -263,32 +267,41 @@ class RAGCodeBaseLLM():
                                 list(map(ast.unparse, item.bases)))
                             for class_item in item.body:
                                 if isinstance(class_item, ast.FunctionDef):
-                                    # print(class_item.name, type(class_object.methods))
-                                    # print(len(class_item.args.args), len(class_item.args.defaults))
-                                    # group = list(zip(class_item.args.args, class_item.args.defaults))
+                                    # print(class_item.name, type(
+                                    #   class_object.methods))
+                                    # print(len(class_item.args.args),
+                                    #       len(class_item.args.defaults))
+                                    # group = list(zip(class_item.args.args,
+                                    #                  class_item.args.defaults))
                                     # for arg, const in group:
                                     #     print(arg.arg, const.value)
-                                    # print(list(zip(class_item.args.args, class_item.args.defaults)))
+                                    # print(list(zip(class_item.args.args,
+                                    #            class_item.args.defaults)))
                                     class_object.methods.append(
                                         FunctHolder(
                                             class_item.name,
                                             item.lineno,
-                                            item.end_lineno,
+                                            item.end_lineno if item.end_lineno
+                                            else item.lineno,
                                             [arg.arg + ((
                                                 " = " + str(defaults.value))
                                                 if str(defaults) == str(None)
                                                 else "")
                                              for arg, defaults in zip(
-                                                class_item.args.args, class_item.args.defaults)],
-                                            str(ast.unparse(class_item.returns)),
-                                            ast.get_source_segment(file_str, class_item),
+                                                class_item.args.args,
+                                                class_item.args.defaults)],
+                                            str(ast.unparse(
+                                                class_item.returns)),
+                                            ast.get_source_segment(
+                                                file_str, class_item),
                                             str(ast.get_docstring(class_item)))
                                     )
                                 if isinstance(class_item, ast.AnnAssign):
                                     class_object.var_annotations.append(
                                         ast.unparse(class_item.target) + ": " +
                                         ast.unparse(class_item.annotation) +
-                                        ((" = " + ast.unparse(class_item.value))
+                                        ((" = " + ast.unparse(
+                                            class_item.value))
                                          if class_item.value else "")
                                     )
                             file_out_lists.classes.append(class_object)
@@ -315,11 +328,13 @@ class RAGCodeBaseLLM():
                         if waiting_heading:
                             if len(token.map) == 2:
                                 section = MDSections(
-                                    tag, int(tag[1]), token.content, token.map[0], token.map[1]
+                                    tag, int(tag[1]), token.content,
+                                    token.map[0], token.map[1]
                                 )
                             elif len(token.map) == 1:
                                 section = MDSections(
-                                    tag, int(tag[1]), token.content, token.map[0], token.map[0]
+                                    tag, int(tag[1]), token.content,
+                                    token.map[0], token.map[0]
                                 )
                             else:
                                 section = MDSections(
@@ -344,15 +359,18 @@ class RAGCodeBaseLLM():
                             # Text before the first heading
                             if len(token.map) == 2:
                                 section = MDSections(
-                                    tag, int(tag), "introduction", token.map[0], token.map[1], token.content,
+                                    tag, int(tag), "introduction",
+                                    token.map[0], token.map[1], token.content,
                                 )
                             elif len(token.map) == 1:
                                 section = MDSections(
-                                    tag, int(tag), "introduction", token.map[0], token.map[0], token.content,
+                                    tag, int(tag), "introduction",
+                                    token.map[0], token.map[0], token.content,
                                 )
                             else:
                                 section = MDSections(
-                                    tag, int(tag), "introduction", -1, -1, token.content
+                                    tag, int(tag), "introduction",
+                                    -1, -1, token.content
                                 )
                             file_out_lists.introduction = section
 
@@ -390,6 +408,7 @@ class RAGCodeBaseLLM():
         input("starting creation")
         for obj in ingest_out:
             print("original", obj.path)
+            print("info:\n", obj.to_dict())
             relative_path = obj.path.relative_to(input_dir_path)
             print("relative", relative_path)
             json_path = output_dir_path / relative_path
@@ -399,10 +418,10 @@ class RAGCodeBaseLLM():
             input()
             json_path.parent.mkdir(parents=True, exist_ok=True)
             print("folder created")
-            with open(json_path, "w"):
-                pass
-            # with open(obj.path, "w") as file:
-            #     json.dump(obj.get_dict(), file)
+            # with open(json_path, "w"):
+            #     pass
+            with open(json_path, "w") as file:
+                json.dump(obj.to_dict(), file, indent=4)
 
             print("file created")
 
@@ -430,7 +449,7 @@ class RAGCodeBaseLLM():
         print()
 
         load_dotenv()
-        self._llm = Small_LLM_Model()
+        # self._llm = Small_LLM_Model()
 
         self.llm_files["vocab"] = self._llm.get_path_to_vocab_file()
         self.llm_files["merges"] = self._llm.get_path_to_merges_file()
@@ -663,12 +682,9 @@ class RAGCodeBaseLLM():
 
         return (container_log)
 
-    def export_to_file(self, file_path: str | None = None) -> None:
+    def export_to_file(self, file_path: str) -> None:
 
         exp_str: str
-
-        if not file_path:
-            file_path = self.output_path
 
         if isinstance(self.to_export, str):
             exp_str = self.to_export
@@ -728,60 +744,3 @@ class RAGCodeBaseLLM():
         else:
             return "".join([self.vocab_int_text[i] for i in ids]
                            ).replace("Ċ", "\n").replace("Ġ", " ")
-
-
-# FunctionDef(name='val_args',
-#             args=arguments(posonlyargs=[],
-#                            args=[arg(arg='args',
-#                                      annotation=Subscript(...),
-#                                      type_comment=None)],
-#                                      vararg=None,
-#                                      kwonlyargs=[],
-#                                      kw_defaults=[],
-#                                      kwarg=None,
-#                                      defaults=[]),
-#             body=[If(test=Compare(left=Subscript(...),
-#                                 ops=[In(...)],
-#                                 comparators=[List(...)]),
-#                                 body=[Assign(targets=[Name(...)],
-#                                 value=ast.Subscript(...),
-#                                 type_comment=None)],
-#                                 orelse=[ast.Raise(exc=ast.Call(...), cause=None)]),
-#             ...,
-#             Return(value=Call(func=Name(...),
-#                                     args=[], keywords=[keyword(...)]))],
-#                                     decorator_list=[],
-#                                     returns=Name(id='InputHolder',
-#                                                 ctx=Load()),
-#                                                 type_comment=None,
-#                                                 type_params=[]),
-# FunctionDef(name='get_from_json_file',
-#             args=arguments(posonlyargs=[],
-#                            args=[arg(arg='file_path',
-#                                      annotation=Name(...),
-#                                      type_comment=None)],
-#                                      vararg=None,
-#                                      kwonlyargs=[],
-#                                      kw_defaults=[],
-#                                      kwarg=None,
-#                                      defaults=[]),
-#             body=[With(items=[withitem(context_expr=Call(...),
-#                                        optional_vars=Name(...))],
-#                         body=[Assign(targets=[Name(...)],
-#                                      value=Call(...), type_comment=None)],
-#                         type_comment=None),
-#                         Return(value=Name(id='output', ctx=Load(...)))], decorator_list=[], returns=Name(id='Any', ctx=Load()), type_comment=None, type_params=[]),
-
-# FunctionDef(name='create_file', args=arguments(posonlyargs=[], args=[arg(arg='file_name', annotation=Name(...), type_comment=None), arg(arg='force', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[Constant(value=False, kind=None)]), body=[Assign(targets=[Name(id='file_path', ctx=Store(...))], value=Call(func=Name(...), args=[Name(...)], keywords=[]), type_comment=None), ..., Return(value=Name(id='file_path', ctx=Load(...)))], decorator_list=[], returns=Name(id='Path', ctx=Load()), type_comment=None, type_params=[]), FunctionDef(name='create_dir', args=arguments(posonlyargs=[], args=[arg(arg='dir_name', annotation=Name(...), type_comment=None), arg(arg='force', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[Constant(value=False, kind=None)]), body=[Assign(targets=[Name(id='dir_path', ctx=Store(...))], value=Call(func=Name(...), args=[Name(...)], keywords=[]), type_comment=None), ..., Return(value=Name(id='dir_path', ctx=Load(...)))], decorator_list=[], returns=Name(id='Path', ctx=Load()), type_comment=None, type_params=[]), FunctionDef(name='ft_repr', args=arguments(posonlyargs=[], args=[arg(arg='s', annotation=Name(...), type_comment=None)], vararg=None, kwonlyargs=[], kw_defaults=[], kwarg=None, defaults=[]), body=[AnnAssign(target=Name(id='out', ctx=Store(...)), annotation=Name(id='str', ctx=Load(...)), value=Constant(value='', kind=None), simple=1), ..., Return(value=Name(id='out', ctx=Load(...)))], decorator_list=[], returns=Name(id='str', ctx=Load()), type_comment=None, type_params=[])
-
-
-# functs: [{'name': 'val_args', 'args': ['args'], 'returns': 'InputHolder', 'docstring': None,
-#           'body':
-#             'if args[1] in [\'index\', \'search\', \'search_dataset\', \'answer\', \'answer_dataset\', \'evaluate\']:\n    mode = args[1]\nelse:\n    raise ValueError(f"Unknown First Argument: {args[1]}\\nMust be: \'ingest\', \'search\', \'answer\' or \'evaluate\'")\ninputs: dict[str, str] = {\'mode\': mode, \'max_chunk_size\': \'2000\', \'dataset_path\': \'data/datasets/UnansweredQuestions/dataset_docs_public.json\', \'k\': \'10\', \'save_directory\': \'data/output/search_results\', \'student_answer_path\': \'data/output/search_results/dataset_docs_public.json\', \'max_context_length\': \'2000\', \'student_search_results_path\': \'data/output/search_results/dataset_docs_public.json\', \'question\': \'\'}\nfail: bool = False\nnext_ins: None | str = None\nfor arg in args[1:]:\n    if next_ins:\n        inputs[next_ins] = arg\n        next_ins = None\n        continue\n    elif arg is args[2] and inputs[\'mode\'] == \'answer\':\n        inputs[\'question\'] = arg\n    elif arg in [\'--max_chunk_size\', \'--dataset_path\', \'--k\', \'--save_directory\', \'--student_answer_path\', \'--max_context_length\', \'--student_search_results_path\']:\n        next_ins = arg[2:]\n    elif arg.startswith(\'--\'):\n        print(f\'Error: Unknown Parameter: {arg}\')\n        fail = True\n        break\n    else:\n        print(\'Error: Unknown Argument\')\n        fail = True\n        break\nif fail:\n    raise ValueError(\'\\nProgram Stopped\')\nreturn InputHolder(**inputs)'},
-#          {'name': 'get_from_json_file', 'args': ['file_path'], 'returns': 'Any', 'docstring': None, 'body': 'with open(file_path) as file_obj:\n    output = json.load(file_obj)\nreturn output'}, {'name': 'create_file', 'args': ['file_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'file_path = Path(file_name)\nif file_path.exists():\n    if not force:\n        print(f"File \'{file_name}\' already exists, do you wish to replace it?")\n        answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n        if answer != \'y\':\n            print(\'Stopping Program\')\n            raise FileExistsError(file_name)\n        print(\'Continuing...\')\n    if file_path.is_file():\n        file_path.unlink()\n    elif file_path.is_dir():\n        if not force:\n            print(f"\'{file_name}\' is a directory are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise IsADirectoryError(file_path)\n        rmtree(file_path)\n    else:\n        raise ValueError(\'Unsupported path type\')\nfile_path.parent.mkdir(parents=True, exist_ok=True)\nwith file_path.open(\'x\'):\n    pass\nreturn file_path'}, {'name': 'create_dir', 'args': ['dir_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'dir_path = Path(dir_name)\nif dir_path.exists():\n    if not force:\n        print(f"Directory \'{dir_name}\' already exists, do you wish to replace it?")\n        answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n        if answer != \'y\':\n            print(\'Stopping Program\')\n            raise FileExistsError(dir_name)\n        print(\'Continuing...\')\n    if dir_path.is_file():\n        if not force:\n            print(f"\'{dir_name}\' is a file are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise FileExistsError(dir_path)\n        dir_path.unlink()\n    elif dir_path.is_dir():\n        if not force:\n            print(f"\'{dir_name}\' is a directory are you SURE you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != \'y\':\n                print(\'Stopping Program\')\n                raise IsADirectoryError(dir_path)\n        rmtree(dir_path)\n    else:\n        raise ValueError(\'Unsupported path type\')\ndir_path.mkdir(parents=True)\nreturn dir_path'}, {'name': 'ft_repr', 'args': ['s'], 'returns': 'str', 'docstring': None, 'body': 'out: str = \'\'\nfor char in s:\n    if char in [\'"\', \'\\\\\']:\n        out += \'\\\\\' + char\n    elif char == \'\\n\':\n        out += \'\\n\'\n    elif char == \'\\t\':\n        out += \'\\t\'\n    elif char == \'\\x00\':\n        out += \'\\x00\'\n    elif char == \'\\x0b\':\n        out += \'\\x0b\'\n    else:\n        out += char\nreturn out'}]
-
-
-# [{'name': 'val_args', 'args': ['args'], 'returns': 'InputHolder', 'docstring': None, 'body': 'def val_args(args: list[str]) -> InputHolder:\n\n    # argc = len(args)\n\n    if (args[1] in [\'index\',  # Index the repository\n                    \'search\',  # Search for a single query\n                    \'search_dataset\',\n                    # Process multiple questions and output search results\n                    \'answer\',  # Answer a single question with context\n                    \'answer_dataset\',  # Generate answers from search results\n                    \'evaluate\',  # Evaluate search results against ground truth\n                    ]):\n        mode = args[1]\n    else:\n        raise ValueError(f"Unknown First Argument: {args[1]}\\n"\n                         "Must be: \'ingest\', \'search\', \'answer\' or \'evaluate\'")\n\n    inputs: dict[str, str] = {\n        "mode": mode,\n        "max_chunk_size": "2000",\n        "dataset_path": ("data/datasets/UnansweredQuestions/"\n                         "dataset_docs_public.json"),\n        "k": "10",\n        "save_directory": "data/output/search_results",\n        "student_answer_path": ("data/output/search_results/"\n                                "dataset_docs_public.json"),\n        "max_context_length": "2000",\n        "student_search_results_path": ("data/output/search_results/"\n                                        "dataset_docs_public.json"),\n        "question": ""\n    }\n    fail: bool = False\n    next_ins: None | str = None\n\n    for arg in args[1:]:\n\n        if next_ins:\n            inputs[next_ins] = arg\n            next_ins = None\n            continue\n\n        elif arg is args[2] and inputs["mode"] == "answer":\n            inputs["question"] = arg\n\n        elif arg in ["--max_chunk_size", "--dataset_path", "--k",\n                     "--save_directory", "--student_answer_path",\n                     "--max_context_length", "--student_search_results_path"]:\n\n            next_ins = arg[2:]\n\n        elif arg.startswith("--"):\n            print(f"Error: Unknown Parameter: {arg}")\n            fail = True\n            break\n        else:\n            print("Error: Unknown Argument")\n            fail = True\n            break\n\n    if fail:\n        raise ValueError("\\nProgram Stopped")\n\n    return InputHolder(**inputs)'}, {'name': 'get_from_json_file', 'args': ['file_path'], 'returns': 'Any', 'docstring': None, 'body': 'def get_from_json_file(file_path: str) -> Any:\n\n    with open(file_path) as file_obj:\n        output = json.load(file_obj)\n\n    return output'},
-#  {'name': 'create_file', 'args': ['file_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'def create_file(file_name: str, force: bool = False) -> Path:\n\n    file_path = Path(file_name)\n\n    if file_path.exists():\n        if not force:\n            print(f"File \'{file_name}\' "\n                  "already exists, do you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != "y":\n                print("Stopping Program")\n                raise FileExistsError(file_name)\n            print("Continuing...")\n        if file_path.is_file():\n            file_path.unlink()\n        elif file_path.is_dir():\n            if not force:\n                print(f"\'{file_name}\' "\n                      "is a directory are you SURE you wish to replace it?")\n                answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n                if answer != "y":\n                    print("Stopping Program")\n                    raise IsADirectoryError(file_path)\n            rmtree(file_path)\n        else:\n            raise ValueError("Unsupported path type")\n\n    file_path.parent.mkdir(parents=True, exist_ok=True)\n    with file_path.open("x"):\n        pass\n\n    return file_path'},
-#  {'name': 'create_dir', 'args': ['dir_name', 'force'], 'returns': 'Path', 'docstring': None, 'body': 'def create_dir(dir_name: str, force: bool = False) -> Path:\n\n    dir_path = Path(dir_name)\n\n    if dir_path.exists():\n        if not force:\n            print(f"Directory \'{dir_name}\' "\n                  "already exists, do you wish to replace it?")\n            answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n            if answer != "y":\n                print("Stopping Program")\n                raise FileExistsError(dir_name)\n            print("Continuing...")\n        if dir_path.is_file():\n            if not force:\n                print(f"\'{dir_name}\' "\n                      "is a file are you SURE you wish to replace it?")\n                answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n                if answer != "y":\n                    print("Stopping Program")\n                    raise FileExistsError(dir_path)\n            dir_path.unlink()\n        elif dir_path.is_dir():\n            if not force:\n                print(f"\'{dir_name}\' "\n                      "is a directory are you SURE you wish to replace it?")\n                answer = input("Y for \'yes\', any for \'no\': ").strip().lower()\n                if answer != "y":\n                    print("Stopping Program")\n                    raise IsADirectoryError(dir_path)\n            rmtree(dir_path)\n        else:\n            raise ValueError("Unsupported path type")\n    dir_path.mkdir(parents=True)\n\n    return dir_path'},
-#  {'name': 'ft_repr', 'args': ['s'], 'returns': 'str', 'docstring': None, 'body': 'def ft_repr(s: str) -> str:\n    out: str = ""\n    for char in s:\n        if char in ["\\"", "\\\\"]:\n            out += "\\\\" + char\n        elif char == "\\n":\n            out += "\\n"\n        elif char == "\\t":\n            out += "\\t"\n        elif char == "\\0":\n            out += "\\0"\n        elif char == "\\v":\n            out += "\\v"\n        else:\n            out += char\n    return out'}]

@@ -6,6 +6,7 @@
         "deffunct",
         "dmota",
         "dotenv",
+        "funct",
         "Funct",
         "functs",
         "ĠĠĠĠ",
@@ -25,5 +26,6 @@
         "ttab",
         "venv",
         "vllm"
-    ]
+    ],
+    "cmake.ignoreCMakeListsMissing": true
 }

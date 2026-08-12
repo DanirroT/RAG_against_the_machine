@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator  # , field_validator
 from abc import ABC, abstractmethod
 from pathlib import Path
 # from enum import Enum
-# from typing import Any, TypedDict
+from typing import Any
 
 
 class InputHolder(BaseModel):
@@ -43,7 +43,7 @@ class FileHolder(ABC):
 
     @abstractmethod
     def to_dict(self) -> dict:
-        raise NotImplementedError
+        return {}
 
 
 class FunctHolder():
@@ -211,13 +211,13 @@ class MDSections:
              if len(self.children) else "")
         )
 
-    # def __dict__(self) -> dict[str, Any]:
-    #     return ({
-    #         "tag": self.tag,
-    #         "level": self.level,
-    #         "content": self.content,
-    #         "children": self.children,
-    #     })
+    def to_dict(self) -> dict[str, Any]:
+        return ({
+            "tag": self.tag,
+            "level": self.level,
+            "content": self.content,
+            "children": self.children,
+        })
 
 
 class MDHolder(FileHolder):
@@ -231,10 +231,12 @@ class MDHolder(FileHolder):
         self.introduction = introduction
         self.sections = sections if sections is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
+
         return {
             "path": str(self.path),
-            "introduction": self.introduction.to_dict(),
+            "introduction": (self.introduction.to_dict()
+                             if self.introduction else None),
             "sections": [section.to_dict() for section in self.sections],
         }
 
@@ -244,12 +246,6 @@ class MDHolder(FileHolder):
             f"\"introduction\": {self.introduction}\n"
             f"\"sections\":\t{'\t\t'.join(map(str, self.sections))}\n"
         )
-
-    # def __dict__(self) -> dict[str, Any]:
-    #     return ({
-    #         "path": self.path,
-    #         "sections": self.sections
-    #     })
 
 
 class OtherHolder(FileHolder):
@@ -266,11 +262,11 @@ class OtherHolder(FileHolder):
             f"\"sections\":\t{'\n\t\t'.join(self.sections)}\n"
         )
 
-    # def __dict__(self) -> dict[str, Any]:
-    #     return ({
-    #         "path": self.path,
-    #         "sections": self.sections
-    #     })
+    def to_dict(self) -> dict[str, Any]:
+        return ({
+            "path": self.path,
+            "sections": self.sections
+        })
 
 
 class DefFunctException(Exception):
