@@ -206,7 +206,7 @@ class RAGCodeBaseLLM():
         print("\n\n")
         for path in input_dir_path.rglob("*"):
             print(path)
-            if path.is_dir() or str(path).startswith(".") or "/." in str(path):
+            if path.is_dir() or any(part.startswith(".") for part in path.parts):
                 print()
                 continue
             file_out_lists: FileHolder
@@ -231,7 +231,7 @@ class RAGCodeBaseLLM():
 
                             for file_import in item.names:
                                 file_out_lists.imports.append(
-                                    (item.module + ".") if item.module else ""
+                                    ((item.module + ".") if item.module else "")
                                     + file_import.name +
                                     ((" as " + file_import.asname)
                                      if file_import.asname else ""))
@@ -248,7 +248,8 @@ class RAGCodeBaseLLM():
                                     item.end_lineno if item.end_lineno
                                     else item.lineno,
                                     [arg.arg + ((" = " + str(defaults.value))
-                                                if str(defaults) == str(None)
+                                                if defaults is not None
+                                                # if str(defaults) == str(None)
                                                 else "")
                                      for arg, defaults in zip(
                                          item.args.args, item.args.defaults)],
@@ -280,9 +281,9 @@ class RAGCodeBaseLLM():
                                     class_object.methods.append(
                                         FunctHolder(
                                             class_item.name,
-                                            item.lineno,
-                                            item.end_lineno if item.end_lineno
-                                            else item.lineno,
+                                            class_item.lineno,
+                                            class_item.end_lineno if class_item.end_lineno
+                                            else class_item.lineno,
                                             [arg.arg + ((
                                                 " = " + str(defaults.value))
                                                 if str(defaults) == str(None)
@@ -418,10 +419,8 @@ class RAGCodeBaseLLM():
             input()
             json_path.parent.mkdir(parents=True, exist_ok=True)
             print("folder created")
-            # with open(json_path, "w"):
-            #     pass
-            with open(json_path, "w") as file:
-                json.dump(obj.to_dict(), file, indent=4)
+            with json_path.open("w") as file:
+                json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
 
             print("file created")
 
@@ -682,7 +681,7 @@ class RAGCodeBaseLLM():
 
         return (container_log)
 
-    def export_to_file(self, file_path: str) -> None:
+    def export_to_file(self, file_path: Path) -> None:
 
         exp_str: str
 
@@ -731,7 +730,7 @@ class RAGCodeBaseLLM():
                 out_str += char
 
         try:
-            with open(file_path, "w") as output_file:
+            with file_path.open("w") as output_file:
                 output_file.write(out_str)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Output File \"{file_path}\" "

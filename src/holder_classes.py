@@ -264,7 +264,7 @@ class OtherHolder(FileHolder):
 
     def to_dict(self) -> dict[str, Any]:
         return ({
-            "path": self.path,
+            "path": str(self.path),
             "sections": self.sections
         })
 

@@ -1,0 +1,126 @@
+{
+    "path": "data/to_process/input.py",
+    "imports": [
+        "src.InputHolder",
+        "json",
+        "typing.Any",
+        "typing.cast",
+        "pathlib.Path",
+        "shutil.rmtree"
+    ],
+    "functs": [
+        {
+            "name": "val_args",
+            "start_line": 11,
+            "end_line": 73,
+            "args": [],
+            "returns": "InputHolder",
+            "docstring": null,
+            "body": "def val_args(args: list[str]) -> InputHolder:\n\n    # argc = len(args)\n\n    if (args[1] in ['index',  # Index the repository\n                    'search',  # Search for a single query\n                    'search_dataset',\n                    # Process multiple questions and output search results\n                    'answer',  # Answer a single question with context\n                    'answer_dataset',  # Generate answers from search results\n                    'evaluate',  # Evaluate search results against ground truth\n                    ]):\n        mode = args[1]\n    else:\n        raise ValueError(f\"Unknown First Argument: {args[1]}\\n\"\n                         \"Must be: 'ingest', 'search', 'answer' or 'evaluate'\")\n\n    inputs: dict[str, str] = {\n        \"mode\": mode,\n        \"max_chunk_size\": \"2000\",\n        \"dataset_path\": (\"data/datasets/UnansweredQuestions/\"\n                         \"dataset_docs_public.json\"),\n        \"k\": \"10\",\n        \"save_directory\": \"data/output/search_results\",\n        \"student_answer_path\": (\"data/output/search_results/\"\n                                \"dataset_docs_public.json\"),\n        \"max_context_length\": \"2000\",\n        \"student_search_results_path\": (\"data/output/search_results/\"\n                                        \"dataset_docs_public.json\"),\n        \"question\": \"\"\n    }\n    fail: bool = False\n    next_ins: None | str = None\n\n    for arg in args[1:]:\n\n        if next_ins:\n            inputs[next_ins] = arg\n            next_ins = None\n            continue\n\n        elif arg is args[2] and inputs[\"mode\"] == \"answer\":\n            inputs[\"question\"] = arg\n\n        elif arg in [\"--max_chunk_size\", \"--dataset_path\", \"--k\",\n                     \"--save_directory\", \"--student_answer_path\",\n                     \"--max_context_length\", \"--student_search_results_path\"]:\n\n            next_ins = arg[2:]\n\n        elif arg.startswith(\"--\"):\n            print(f\"Error: Unknown Parameter: {arg}\")\n            fail = True\n            break\n        else:\n            print(\"Error: Unknown Argument\")\n            fail = True\n            break\n\n    if fail:\n        raise ValueError(\"\\nProgram Stopped\")\n\n    return InputHolder(**inputs)"
+        },
+        {
+            "name": "get_from_json_file",
+            "start_line": 76,
+            "end_line": 81,
+            "args": [],
+            "returns": "Any",
+            "docstring": null,
+            "body": "def get_from_json_file(file_path: str) -> Any:\n\n    with open(file_path) as file_obj:\n        output = json.load(file_obj)\n\n    return output"
+        },
+        {
+            "name": "create_file",
+            "start_line": 84,
+            "end_line": 115,
+            "args": [
+                "file_name = False"
+            ],
+            "returns": "Path",
+            "docstring": null,
+            "body": "def create_file(file_name: str, force: bool = False) -> Path:\n\n    file_path = Path(file_name)\n\n    if file_path.exists():\n        if not force:\n            print(f\"File '{file_name}' \"\n                  \"already exists, do you wish to replace it?\")\n            answer = input(\"Y for 'yes', any for 'no': \").strip().lower()\n            if answer != \"y\":\n                print(\"Stopping Program\")\n                raise FileExistsError(file_name)\n            print(\"Continuing...\")\n        if file_path.is_file():\n            file_path.unlink()\n        elif file_path.is_dir():\n            if not force:\n                print(f\"'{file_name}' \"\n                      \"is a directory are you SURE you wish to replace it?\")\n                answer = input(\"Y for 'yes', any for 'no': \").strip().lower()\n                if answer != \"y\":\n                    print(\"Stopping Program\")\n                    raise IsADirectoryError(file_path)\n            rmtree(file_path)\n        else:\n            raise ValueError(\"Unsupported path type\")\n\n    file_path.parent.mkdir(parents=True, exist_ok=True)\n    with file_path.open(\"x\"):\n        pass\n\n    return file_path"
+        },
+        {
+            "name": "create_dir",
+            "start_line": 118,
+            "end_line": 153,
+            "args": [
+                "dir_name = False"
+            ],
+            "returns": "Path",
+            "docstring": null,
+            "body": "def create_dir(dir_name: str, force: bool = False) -> Path:\n\n    dir_path = Path(dir_name)\n\n    if dir_path.exists():\n        if not force:\n            print(f\"Directory '{dir_name}' \"\n                  \"already exists, do you wish to replace it?\")\n            answer = input(\"Y for 'yes', any for 'no': \").strip().lower()\n            if answer != \"y\":\n                print(\"Stopping Program\")\n                raise FileExistsError(dir_name)\n            print(\"Continuing...\")\n        if dir_path.is_file():\n            if not force:\n                print(f\"'{dir_name}' \"\n                      \"is a file are you SURE you wish to replace it?\")\n                answer = input(\"Y for 'yes', any for 'no': \").strip().lower()\n                if answer != \"y\":\n                    print(\"Stopping Program\")\n                    raise FileExistsError(dir_path)\n            dir_path.unlink()\n        elif dir_path.is_dir():\n            if not force:\n                print(f\"'{dir_name}' \"\n                      \"is a directory are you SURE you wish to replace it?\")\n                answer = input(\"Y for 'yes', any for 'no': \").strip().lower()\n                if answer != \"y\":\n                    print(\"Stopping Program\")\n                    raise IsADirectoryError(dir_path)\n            rmtree(dir_path)\n        else:\n            raise ValueError(\"Unsupported path type\")\n    dir_path.mkdir(parents=True)\n\n    return dir_path"
+        },
+        {
+            "name": "ft_repr",
+            "start_line": 156,
+            "end_line": 171,
+            "args": [],
+            "returns": "str",
+            "docstring": null,
+            "body": "def ft_repr(s: str) -> str:\n    out: str = \"\"\n    for char in s:\n        if char in [\"\\\"\", \"\\\\\"]:\n            out += \"\\\\\" + char\n        elif char == \"\\n\":\n            out += \"\\n\"\n        elif char == \"\\t\":\n            out += \"\\t\"\n        elif char == \"\\0\":\n            out += \"\\0\"\n        elif char == \"\\v\":\n            out += \"\\v\"\n        else:\n            out += char\n    return out"
+        }
+    ],
+    "classes": [
+        {
+            "name": "FileHolder",
+            "start_line": 174,
+            "end_line": 180,
+            "inherits": [
+                "ABC"
+            ],
+            "docstring": null,
+            "variable_annotations": [
+                "path: Path"
+            ],
+            "methods": [
+                {
+                    "name": "__init__",
+                    "start_line": 179,
+                    "end_line": 180,
+                    "args": [],
+                    "returns": "None",
+                    "docstring": "None",
+                    "body": "def __init__(self, path: Path) -> None:\n        self.path = path"
+                }
+            ]
+        },
+        {
+            "name": "PyHolder",
+            "start_line": 183,
+            "end_line": 209,
+            "inherits": [
+                "FileHolder"
+            ],
+            "docstring": null,
+            "variable_annotations": [
+                "imports: list[str]",
+                "functs: list[FunctHolder]",
+                "classes: list[ClassHolder]",
+                "start_line: int",
+                "end_line: int"
+            ],
+            "methods": [
+                {
+                    "name": "__init__",
+                    "start_line": 190,
+                    "end_line": 201,
+                    "args": [
+                        "self",
+                        "path"
+                    ],
+                    "returns": "None",
+                    "docstring": "None",
+                    "body": "def __init__(self, path: Path,\n                 start_line: int,\n                 end_line: int,\n                 imports: list[str] | None,\n                 functs: list[FunctHolder] | None = None,\n                 classes: list[ClassHolder] | None = None) -> None:\n        super().__init__(path)\n        self.start_line = start_line\n        self.end_line = end_line\n        self.imports = imports if imports is not None else []\n        self.functs = functs if functs is not None else []\n        self.classes = classes if classes is not None else []"
+                },
+                {
+                    "name": "__str__",
+                    "start_line": 203,
+                    "end_line": 209,
+                    "args": [],
+                    "returns": "str",
+                    "docstring": "None",
+                    "body": "def __str__(self) -> str:\n        return (\n            f\"\\\"path\\\": {self.path}\\n\"\n            f\"\\\"imports\\\":\\t{'\\n\\t\\t'.join(self.imports)}\\n\"\n            f\"\\\"functs\\\":\\n{'\\n\\n'.join(map(str, self.functs))}\\n\\n\"\n            f\"\\\"classes\\\":\\n{'\\n\\n\\n'.join(map(str, self.classes))}\\n\"\n        )"
+                }
+            ]
+        }
+    ]
+}
