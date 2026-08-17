@@ -19,6 +19,8 @@ class RAGCodeBaseLLM():
 
     dataset: dict[str, Any]
 
+    arg_inputs: InputHolder
+
     save_directory: Path
     student_answer_path: Path
     student_search_results_path: Path
@@ -77,7 +79,9 @@ class RAGCodeBaseLLM():
         else:
             raise ValueError("No Arguments were passed to the Class")
 
-        if arg_inputs.mode == "index":
+        self.arg_inputs = arg_inputs
+
+        if self.arg_inputs.mode == "index":
             input_dir_str = "data/to_process/"
             output_dir_str = "data/processed/"
 
@@ -114,27 +118,27 @@ class RAGCodeBaseLLM():
             print(f"Ingestion complete! Indices saved under {output_dir_str}")
             return
 
-        elif arg_inputs.mode == "answer":
-            query = arg_inputs.question
+        elif self.arg_inputs.mode == "answer":
+            query = self.arg_inputs.question
             output_dir_str = ""
             self._str_answer(query, output_dir_path)
 
-        elif arg_inputs.mode == "answer_dataset":
-            query = arg_inputs.question
+        elif self.arg_inputs.mode == "answer_dataset":
+            query = self.arg_inputs.question
             output_dir_str = ""
             self._file_answer(query, output_dir_path)
 
-        elif arg_inputs.mode == "search":
-            lookup = arg_inputs.question
+        elif self.arg_inputs.mode == "search":
+            lookup = self.arg_inputs.question
             output_dir_str = ""
             self._str_search(lookup, output_dir_path)
 
-        elif arg_inputs.mode == "search_dataset":
-            lookup = arg_inputs.question
+        elif self.arg_inputs.mode == "search_dataset":
+            lookup = self.arg_inputs.question
             output_dir_str = ""
             self._file_search(lookup, output_dir_path)
 
-        elif arg_inputs.mode == "evaluate":
+        elif self.arg_inputs.mode == "evaluate":
             output_dir_str = ""
             self._evaluate(input_dir_path, output_dir_path)
 
@@ -206,7 +210,8 @@ class RAGCodeBaseLLM():
         print("\n\n")
         for path in input_dir_path.rglob("*"):
             print(path)
-            if path.is_dir() or any(part.startswith(".") for part in path.parts):
+            if path.is_dir() or any(part.startswith(".")
+                                    for part in path.parts):
                 print()
                 continue
             file_out_lists: FileHolder
@@ -231,7 +236,8 @@ class RAGCodeBaseLLM():
 
                             for file_import in item.names:
                                 file_out_lists.imports.append(
-                                    ((item.module + ".") if item.module else "")
+                                    ((item.module + ".")
+                                     if item.module else "")
                                     + file_import.name +
                                     ((" as " + file_import.asname)
                                      if file_import.asname else ""))
@@ -241,23 +247,29 @@ class RAGCodeBaseLLM():
                             #       if item.args.defaults else "")
                             # print(list(zip(item.args.args,
                             #       item.args.defaults)))
-                            file_out_lists.functs.append(
-                                FunctHolder(
-                                    item.name,
-                                    item.lineno,
-                                    item.end_lineno if item.end_lineno
-                                    else item.lineno,
-                                    [arg.arg + ((" = " + str(defaults.value))
-                                                if defaults is not None
-                                                # if str(defaults) == str(None)
-                                                else "")
-                                     for arg, defaults in zip(
-                                         item.args.args, item.args.defaults)],
-                                    str(ast.unparse(item.returns)
-                                        if item.returns else None),
-                                    ast.get_source_segment(file_str, item),
-                                    ast.get_docstring(item))
-                            )
+                            funct = FunctHolder(
+                                        item.name,
+                                        item.lineno,
+                                        item.end_lineno if item.end_lineno
+                                        else item.lineno,
+                                        [arg.arg + ((" = " + str(defaults.value))
+                                                    if defaults is not None
+                                                    # if str(defaults) == str(None)
+                                                    else "")
+                                         for arg, defaults in zip(
+                                            item.args.args, item.args.defaults)],
+                                        str(ast.unparse(item.returns)
+                                            if item.returns else None),
+                                        ast.get_source_segment(file_str, item),
+                                        ast.get_docstring(item))
+
+                            if (funct.body.count("\n") >
+                                self.arg_inputs.max_chunk_size):
+                                raise ValueError(
+                                    f"Function '{funct.name}' is too large"
+                                )
+
+                            file_out_lists.functs.append(funct)
 
                         if isinstance(item, ast.ClassDef):
                             class_object = ClassHolder(
@@ -282,7 +294,8 @@ class RAGCodeBaseLLM():
                                         FunctHolder(
                                             class_item.name,
                                             class_item.lineno,
-                                            class_item.end_lineno if class_item.end_lineno
+                                            class_item.end_lineno
+                                            if class_item.end_lineno
                                             else class_item.lineno,
                                             [arg.arg + ((
                                                 " = " + str(defaults.value))

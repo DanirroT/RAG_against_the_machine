@@ -1,77 +1,155 @@
-# import sys
-from typing import cast
-
-from src import InputHolder
 from pydantic_core import ErrorDetails
 import json
 from typing import Any
 from pathlib import Path
 from shutil import rmtree
+from argparse import ArgumentParser
+from typing import cast
+
+# from src import InputHolder
+
+from pydantic import BaseModel, Field, model_validator
 
 
-def val_args(args: list[str]) -> InputHolder:
+class InputHolder(BaseModel):
 
-    # argc = len(args)
+    mode: str = Field()
+    max_chunk_size: int = Field(gt=0)
+    dataset_path: str = Field(min_length=1)
+    k: float = Field(gt=0)
+    save_directory: str = Field(min_length=1)
+    student_answer_path: str = Field(min_length=1)
+    max_context_length: int = Field(gt=0)
+    student_search_results_path: str = Field(min_length=1)
+    question: str = Field()
 
-    if (args[1] in ['index',  # Index the repository
-                    'search',  # Search for a single query
-                    'search_dataset',
-                    # Process multiple questions and output search results
-                    'answer',  # Answer a single question with context
-                    'answer_dataset',  # Generate answers from search results
-                    'evaluate',  # Evaluate search results against ground truth
-                    ]):
-        mode = args[1]
-    else:
-        raise ValueError(f"Unknown First Argument: {args[1]}\n"
-                         "Must be: 'ingest', 'search', 'answer' or 'evaluate'")
+    @model_validator(mode="after")
+    def validate_inputs(self) -> "InputHolder":
+        if self.mode == "answer" and not self.question:
+            raise ValueError(f"When calling the '{self.mode}' mode, a question"
+                             " must be provided as the second argument.")
 
-    inputs: dict[str, str] = {
-        "mode": mode,
-        "max_chunk_size": "2000",
-        "dataset_path": ("data/datasets/UnansweredQuestions/"
-                         "dataset_docs_public.json"),
-        "k": "10",
-        "save_directory": "data/output/search_results",
-        "student_answer_path": ("data/output/search_results/"
-                                "dataset_docs_public.json"),
-        "max_context_length": "2000",
-        "student_search_results_path": ("data/output/search_results/"
-                                        "dataset_docs_public.json"),
-        "question": ""
-    }
-    fail: bool = False
-    next_ins: None | str = None
+        try:
+            with open(self.dataset_path):
+                pass
+        except FileNotFoundError:
+            raise ValueError("File set as dataset_path does not exist:"
+                             f" {self.dataset_path}")
 
-    for arg in args[1:]:
+        return (self)
 
-        if next_ins:
-            inputs[next_ins] = arg
-            next_ins = None
-            continue
+    def __str__(self) -> str:
+        return super().__str__()
 
-        elif arg is args[2] and inputs["mode"] == "answer":
-            inputs["question"] = arg
 
-        elif arg in ["--max_chunk_size", "--dataset_path", "--k",
-                     "--save_directory", "--student_answer_path",
-                     "--max_context_length", "--student_search_results_path"]:
+def val_args() -> InputHolder:
+    """
+    Function to Parse all received arguments into
+    a dictionary format. specific for the Project.
+    """
 
-            next_ins = arg[2:]
+    parser = ArgumentParser()
 
-        elif arg.startswith("--"):
-            print(f"Error: Unknown Parameter: {arg}")
-            fail = True
-            break
-        else:
-            print("Error: Unknown Argument")
-            fail = True
-            break
+    parser.add_argument("mode",
+                        choices=[
+                            "index",
+                            "search", "search_dataset",
+                            "answer", "answer_dataset",
+                            "evaluate"
+                        ])
+    parser.add_argument("--max_chunk_size", type=int, default=2000,)
+    parser.add_argument("--dataset_path",
+                        default=("data/datasets/UnansweredQuestions/"
+                                 "dataset_docs_public.json"),)
+    parser.add_argument("--k", type=float, default=10,)
+    parser.add_argument("--save_directory",
+                        default="data/output/search_results",)
+    parser.add_argument("--student_answer_path",
+                        default=("data/output/search_results/"
+                                 "dataset_docs_public.json"),)
+    parser.add_argument("--max_context_length", type=int, default=2000,)
+    parser.add_argument("--student_search_results_path",
+                        default=("data/output/search_results/"
+                                 "dataset_docs_public.json"),)
+    parser.add_argument("--question", default="")
 
-    if fail:
-        raise ValueError("\nProgram Stopped")
+    arg_inputs = cast(dict[str, str], vars(parser.parse_args()))
 
-    return InputHolder(**inputs)  # pyright: ignore
+    print()
+    print(arg_inputs)
+    print()
+
+    return InputHolder(**arg_inputs)  # pyright: ignore
+
+
+# print()
+# print(val_args())
+# print()
+
+
+# def val_args(args: list[str]) -> InputHolder:
+
+#     # argc = len(args)
+
+#     if (args[1] in ['index',  # Index the repository
+#                     'search',  # Search for a single query
+#                     'search_dataset',
+#                     # Process multiple questions and output search results
+#                     'answer',  # Answer a single question with context
+#                     'answer_dataset',  # Generate answers from search results
+#                   'evaluate',  # Evaluate search results against ground truth
+#                     ]):
+#         mode = args[1]
+#     else:
+#         raise ValueError(f"Unknown First Argument: {args[1]}\n"
+#                        "Must be: 'ingest', 'search', 'answer' or 'evaluate'")
+
+#     inputs: dict[str, str] = {
+#         "mode": mode,
+#         "max_chunk_size": "2000",
+#         "dataset_path": ("data/datasets/UnansweredQuestions/"
+#                          "dataset_docs_public.json"),
+#         "k": "10",
+#         "save_directory": "data/output/search_results",
+#         "student_answer_path": ("data/output/search_results/"
+#                                 "dataset_docs_public.json"),
+#         "max_context_length": "2000",
+#         "student_search_results_path": ("data/output/search_results/"
+#                                         "dataset_docs_public.json"),
+#         "question": ""
+#     }
+#     fail: bool = False
+#     next_ins: None | str = None
+
+#     for arg in args[1:]:
+
+#         if next_ins:
+#             inputs[next_ins] = arg
+#             next_ins = None
+#             continue
+
+#         elif arg is args[2] and inputs["mode"] == "answer":
+#             inputs["question"] = arg
+
+#         elif arg in ["--max_chunk_size", "--dataset_path", "--k",
+#                      "--save_directory", "--student_answer_path",
+#                    "--max_context_length", "--student_search_results_path"]:
+
+#             next_ins = arg[2:]
+
+#         elif arg.startswith("--"):
+#             print(f"Error: Unknown Parameter: {arg}")
+#             fail = True
+#             break
+#         else:
+#             print("Error: Unknown Argument")
+#             fail = True
+#             break
+
+#     if fail:
+#         raise ValueError("\nProgram Stopped")
+
+#     return InputHolder(**inputs)  # pyright: ignore
 
 
 def get_from_json_file(file_path: str) -> Any:
