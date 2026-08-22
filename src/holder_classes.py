@@ -33,6 +33,9 @@ class InputHolder(BaseModel):
 
         return (self)
 
+    def __str__(self) -> str:
+        return super().__str__()
+
 
 class FileHolder(ABC):
 
@@ -43,11 +46,32 @@ class FileHolder(ABC):
         self.path = path
 
     @abstractmethod
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {}
 
 
-class FunctHolder():
+class SectionHolder(ABC):
+
+    name: str
+    start_line: int
+    end_line: int
+
+    @abstractmethod
+    def __init__(self, name: str, start_line: int, end_line: int) -> None:
+        self.name = name
+        self.start_line = start_line
+        self.end_line = end_line
+
+    @abstractmethod
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+    @abstractmethod
+    def extract(self) -> str:
+        return ""
+
+
+class FunctHolder(SectionHolder):
 
     name: str
     start_line: int
@@ -64,15 +88,13 @@ class FunctHolder():
                  returns: str,
                  body: str,
                  docstring: str | None = None) -> None:
-        self.name = name
-        self.start_line = start_line
-        self.end_line = end_line
+        super().__init__(name, start_line, end_line)
         self.args = args
         self.returns = returns
         self.docstring = docstring
         self.body = body
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "start_line": self.start_line,
@@ -94,8 +116,20 @@ class FunctHolder():
             f"\"body\":\n{self.body}\n"
         )
 
+    def extract(self) -> str:
+        return (
+            f"funct_name: {self.name}\n"
+            f"\"args\":\t({' '.join(self.args)})\t"
+            f"\"returns\":\t{self.returns}\n" +
+            ((f"\"docstring\":\t{self.docstring}\n")
+             if self.docstring else "") +
+            f"start={self.start_line}, end={self.end_line}\n"
+            f"\"body\":\n{self.body}\n"
+            f"{self.name}"
+        )
 
-class ClassHolder():
+
+class ClassHolder(SectionHolder):
 
     name: str
     start_line: int
@@ -112,16 +146,14 @@ class ClassHolder():
                  inherits: list[str],
                  var_annotations: list[str] | None = None,
                  methods: list[FunctHolder] | None = None) -> None:
-        self.name = name
-        self.start_line = start_line
-        self.end_line = end_line
+        super().__init__(name, start_line, end_line)
         self.docstring = docstring
         self.inherits = inherits
         self.var_annotations = (var_annotations
                                 if var_annotations is not None else [])
         self.methods = methods if methods is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "start_line": self.start_line,
@@ -143,6 +175,18 @@ class ClassHolder():
             f"\n\n\"methods\":\n{'\n\n'.join(map(str, self.methods))}\n"
         )
 
+    def extract(self) -> str:
+        return (
+            f"class_name: {self.name}\n" +
+            ((f"\"inherits\":\t{self.inherits}") if self.inherits else "") +
+            f"\n\"vars\":\n{', '.join(self.var_annotations)}" +
+            ((f"\"docstring\":\t{self.docstring}\n")
+             if self.docstring else "") +
+            f"\n\n\"methods\":\n{'\n\n'.join(map(str, self.methods))}\n"
+            f"start={self.start_line}, end={self.end_line}\n"
+            f"{self.name}"
+        )
+
 
 class PyHolder(FileHolder):
     imports: list[str]
@@ -158,7 +202,7 @@ class PyHolder(FileHolder):
         self.functs = functs if functs is not None else []
         self.classes = classes if classes is not None else []
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "path": str(self.path),
             "imports": self.imports,
@@ -175,7 +219,7 @@ class PyHolder(FileHolder):
         )
 
 
-class MDSections():
+class MDSections(SectionHolder):
     name: str
     start_line: int
     end_line: int
@@ -191,11 +235,9 @@ class MDSections():
                  end_line: int,
                  content: str | None = None,
                  children: list["MDSections"] | None = None) -> None:
+        super().__init__(name, start_line, end_line)
         self.tag = tag
         self.level = level
-        self.name = name
-        self.start_line = start_line
-        self.end_line = end_line
         self.content = content if content is not None else ""
         self.children = children if children is not None else []
 
