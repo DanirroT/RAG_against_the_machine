@@ -10,7 +10,8 @@ import ast
 from markdown_it import MarkdownIt
 from src import (get_from_json_file, create_file, create_dir,
                  InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
-                 OtherHolder, FunctHolder, ClassHolder, DefFunctException
+                 OtherHolder, FunctHolder, ClassHolder, DefFunctException,
+                 Chunk, ChunkScorePair, ChunkType
                  )
 # from llm_sdk import Small_LLM_Model
 
@@ -406,23 +407,156 @@ class RAGCodeBaseLLM():
 
         print("output:", output_dir_path)
 
-        input("starting creation")
-        for obj in ingest_out:
-            print("original", obj.path)
-            print("info:\n", obj.to_dict())
-            relative_path = obj.path.relative_to(input_dir_path)
-            print("relative", relative_path)
-            json_path = output_dir_path / relative_path
-            print("output original", json_path)
-            json_path = json_path.with_suffix(json_path.suffix + ".json")
-            print("output suffix", json_path)
-            input()
-            json_path.parent.mkdir(parents=True, exist_ok=True)
-            print("folder created")
-            with json_path.open("w") as file:
-                json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
+        # input("starting creation")
+        # for obj in ingest_out:
+        #     json_path = output_dir_path / obj.path.relative_to(input_dir_path)
+        #     json_path = json_path.with_suffix(json_path.suffix + ".json")
+        #     json_path.parent.mkdir(parents=True, exist_ok=True)
+        #     print("folder created")
+        #     with json_path.open("w") as file:
+        #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
 
-            print("file created")
+        ingest_out_flattened = self.flatten_file_holders(ingest_out)
+
+        print("flattened output:", "\n\n".join(map(str, ingest_out_flattened)))
+
+        input()
+
+        last_path: Path | None = None
+
+        for obj in ingest_out_flattened:
+            current_path = output_dir_path / obj.path.relative_to(input_dir_path)
+
+            print("path:\t", current_path, "\npath:\t", str(last_path), "\n\n")
+
+            if not last_path or str(current_path) != str(last_path):
+                print("\t New", str(current_path), str(last_path), str(current_path) != str(last_path))
+                current_path.parent.mkdir(parents=True, exist_ok=True)
+                if last_path:
+                    with last_path.open("a") as file:
+                        file.write("\n]\n")
+                with current_path.open("x") as file:
+                    file.write("[\n")
+            else:
+                print("\t Same")
+                with current_path.open("a") as file:
+                    file.write(",\n")
+            with current_path.open("a") as file:
+                json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
+            last_path  = current_path
+            input()
+
+        print("file created")
+
+    def flatten_file_holders(self, file_holders: list[FileHolder]) -> list[Chunk]:
+
+        flattened_chunks: list[Chunk] = []
+
+        for file_holder in file_holders:
+            if isinstance(file_holder, PyHolder):
+
+                flattened_chunks += self.flatten_py(file_holder)
+
+            elif isinstance(file_holder, MDHolder):
+
+                if file_holder.introduction:
+                    flattened_chunks.append(
+                        Chunk(
+                            id=f"{file_holder.path.stem}_introduction",
+                            path=str(file_holder.path),
+                            type=ChunkType.INTRODUCTION,
+                            parent=None,
+                            start_line=file_holder.introduction.start_line,
+                            end_line=file_holder.introduction.end_line,
+                            content=file_holder.introduction.content
+                        )
+                    )
+
+                flattened_chunks += self.flatten_md(file_holder.sections, file_holder.path)
+
+            else:
+                counter = 0
+                for section in file_holder.sections:
+                    flattened_chunks.append(
+                        Chunk(
+                            id=f"other_{file_holder.path.stem}_section_{counter}",
+                            path=str(file_holder.path),
+                            parent=None,
+                            type=ChunkType.OTHER,
+                            start_line=-1,
+                            end_line=-1,
+                            content=section
+                        )
+                    )
+                    counter += 1
+
+        return flattened_chunks
+
+    def flatten_py(self, py_holder: PyHolder) -> list[Chunk]:
+
+        flattened_chunks: list[Chunk] = []
+
+        for funct in py_holder.functs:
+            flattened_chunks.append(
+                Chunk(
+                    id=f"{py_holder.path.stem}_function_{funct.name}",
+                    path=str(py_holder.path),
+                    type=ChunkType.FUNCTION,
+                    parent=None,
+                    start_line=funct.start_line,
+                    end_line=funct.end_line,
+                    content=funct.body
+                )
+            )
+        for cls in py_holder.classes:
+            flattened_chunks.append(
+                Chunk(
+                    id=f"{py_holder.path.stem}_class_{cls.name}",
+                    path=str(py_holder.path),
+                    type=ChunkType.CLASS,
+                    parent=None,
+                    start_line=cls.start_line,
+                    end_line=cls.end_line,
+                    content=(cls.docstring if cls.docstring else ""
+                             + "\n".join(cls.var_annotations))
+                )
+            )
+
+            flattened_chunks += [
+                Chunk(
+                    id=f"{py_holder.path.stem}_class_{cls.name}_method_{method.name}",
+                    path=str(py_holder.path),
+                    type=ChunkType.METHOD,
+                    parent=cls.name,
+                    start_line=method.start_line,
+                    end_line=method.end_line,
+                    content=method.body
+                )
+                for method in cls.methods
+            ]
+
+        return flattened_chunks
+
+    def flatten_md(self, md_holder: List[MDSections], path: Path) -> list[Chunk]:
+
+        flattened_chunks: list[Chunk] = []
+
+        for section in md_holder:
+            flattened_chunks.append(
+                Chunk(
+                    id=f"{path.stem}_section_{section.name}",
+                    path=str(path),
+                    type=ChunkType.SECTION,
+                    parent=None,
+                    start_line=section.start_line,
+                    end_line=section.end_line,
+                    content=section.content
+                )
+            )
+            if section.children:
+                flattened_chunks += self.flatten_md(section.children, path)
+
+        return flattened_chunks
 
     def _str_answer(self, query: str, output_dir_path: Path) -> None:
         pass
@@ -576,110 +710,6 @@ class RAGCodeBaseLLM():
             tokenized_prompt[0].tolist())  # pyright: ignore
 
         return (tokenized_int_prompt)
-
-    def _post_gen_exceptions(self, max_val_ind: int,
-                             last_added_token: int) -> int:
-
-        return_val = max_val_ind
-
-        if (max_val_ind in [self.vocab_text_int["}\""],
-                            self.vocab_text_int["}\"Ċ"],
-                            self.vocab_text_int["}\"ĊĊ"]]):
-            return_val = self.vocab_text_int["}"]
-
-        elif (max_val_ind in [self.vocab_text_int["\\"]]):
-            return_val = self.vocab_text_int["\\\\"]
-
-        elif (max_val_ind in [self.vocab_text_int["]\""],
-                              self.vocab_text_int["]\"Ċ"]]):
-            return_val = self.vocab_text_int["]"]
-
-        elif (max_val_ind in [self.vocab_text_int["}ĊĊ"]]):
-            return_val = self.vocab_text_int["}Ċ"]
-
-        elif (max_val_ind in [self.vocab_text_int[")\""],
-                              self.vocab_text_int[")\"Ċ"]]):
-            return_val = self.vocab_text_int[")"]
-
-        elif (max_val_ind in [self.vocab_text_int["Ġ\""]] and
-              last_added_token in [self.vocab_text_int["ĠĠĠĠ"],
-                                   self.vocab_text_int["ĠĠĠĠĠĠĠĠ"]]):
-            return_val = self.vocab_text_int["\""]
-
-        elif max_val_ind == self.vocab_text_int["ĉ"]:
-            return_val = self.vocab_text_int["ĠĠĠĠ"]
-
-        return (return_val)
-
-    def _container_management(self, container_log: list[str],
-                              last_added_token: int) -> list[str]:
-
-        if (last_added_token in [self.vocab_text_int["{"],
-                                 self.vocab_text_int["}"],
-                                 self.vocab_text_int["}Ċ"],
-                                 self.vocab_text_int["["],
-                                 self.vocab_text_int["]"],
-                                 self.vocab_text_int["]Ċ"],
-                                 self.vocab_text_int["\""],
-                                 self.vocab_text_int["\"Ċ"],
-                                 self.vocab_text_int['ĠĠĠĠ'],
-                                 self.vocab_text_int['ĠĠĠĠĠĠĠĠ'],
-                                 self.vocab_text_int['Ċ'],
-                                 self.vocab_text_int[","],
-                                 self.vocab_text_int[":"],
-                                 self.vocab_text_int["Ġ{Ċ"],
-                                 self.vocab_text_int[")\",Ċ"],
-                                 self.vocab_text_int["Ġ}Ċ"],
-                                 self.vocab_text_int["\",Ċ"],
-                                 self.vocab_text_int["\","],
-                                 self.vocab_text_int["Ġ\""],
-                                 self.vocab_text_int["\":"]]):
-
-            if (last_added_token in [self.vocab_text_int["\""],
-                                     self.vocab_text_int["\"Ċ"],
-                                     self.vocab_text_int["\",Ċ"],
-                                     self.vocab_text_int["\","],
-                                     self.vocab_text_int[")\",Ċ"],
-                                     self.vocab_text_int["\":"]]
-                    and container_log[-1] == "\""):
-                container_log.pop()
-
-            elif last_added_token in [self.vocab_text_int["Ġ{Ċ"],
-                                      self.vocab_text_int["{"],
-                                      self.vocab_text_int["["],
-                                      self.vocab_text_int["\""],
-                                      self.vocab_text_int["Ġ\""]]:
-                to_add = last_added_token
-
-                if to_add == self.vocab_text_int["Ġ{Ċ"]:
-                    to_add = self.vocab_text_int["{"]
-                if to_add == self.vocab_text_int["Ġ\""]:
-                    to_add = self.vocab_text_int["\""]
-
-                container_log.append(self.vocab_int_text[to_add])
-
-            elif last_added_token in [self.vocab_text_int["}"],
-                                      self.vocab_text_int["}Ċ"],
-                                      self.vocab_text_int["Ġ}Ċ"],
-                                      self.vocab_text_int["]"],
-                                      self.vocab_text_int["]Ċ"]]:
-
-                if ((last_added_token in [self.vocab_text_int["}"],
-                                          self.vocab_text_int["}Ċ"],
-                                          self.vocab_text_int["Ġ}Ċ"]]
-                    and container_log[-1] == "{") or
-                    (last_added_token in [self.vocab_text_int["]"],
-                                          self.vocab_text_int["]Ċ"]]
-                        and container_log[-1] == "[")):
-                    container_log.pop()
-
-                else:
-                    print("ERROR in container generation", container_log[-1],
-                          self.vocab_int_text[last_added_token])
-                    if (last_added_token == self.vocab_text_int["}"]):
-                        return []
-
-        return (container_log)
 
     def export_to_file(self, file_path: Path) -> None:
 

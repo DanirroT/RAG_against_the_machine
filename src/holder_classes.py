@@ -1,3 +1,4 @@
+from enum import Enum
 from pydantic import BaseModel, Field, model_validator  # , field_validator
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -174,7 +175,7 @@ class PyHolder(FileHolder):
         )
 
 
-class MDSections:
+class MDSections():
     name: str
     start_line: int
     end_line: int
@@ -276,6 +277,53 @@ class DefFunctException(Exception):
     def __init__(self, e_len: int, *args: object) -> None:
         super().__init__(*args)
         self.e_len = e_len
+
+
+class ChunkType(Enum):
+    IMPORT = "python_imports"
+    FUNCTION = "python_function"
+    CLASS = "python_class_header"
+    METHOD = "python_method"
+
+    INTRODUCTION = "markdown_introduction"
+    SECTION = "markdown_section"
+
+    OTHER = "other_section"
+
+
+class Chunk(BaseModel):
+    id: str
+    path: str
+    type: ChunkType
+    parent: str | None
+    start_line: int
+    end_line: int
+    content: str
+
+    @model_validator(mode="after")
+    def validate_inputs(self) -> "Chunk":
+
+        if self.type == ChunkType.METHOD and not self.parent:
+            raise ValueError("A method chunk must have a parent class.")
+
+        return (self)
+
+    def to_dict(self) -> dict[str, Any]:
+
+        return {
+            "id": self.id,
+            "path": str(self.path),
+            "type": str(self.type),
+            "parent": self.parent,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "content": self.content
+        }
+
+
+class ChunkScorePair(BaseModel):
+    chunk: Chunk
+    score: float
 
 
 """

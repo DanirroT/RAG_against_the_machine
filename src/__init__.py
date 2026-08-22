@@ -1,6 +1,7 @@
 from .holder_classes import (InputHolder, DefFunctException,
                              FileHolder, PyHolder, MDHolder, MDSections,
-                             OtherHolder, FunctHolder, ClassHolder)
+                             OtherHolder, FunctHolder, ClassHolder,
+                             Chunk, ChunkScorePair, ChunkType)
 from .input import (val_args, get_from_json_file,
                     ft_repr, error_processing, create_dir, create_file)
 from .funct_call_llm import RAGCodeBaseLLM
@@ -14,5 +15,6 @@ __all__: list[str] = [
     "val_args", "get_from_json_file", "ft_repr", "error_processing",
     "create_file", "create_dir",
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",
-    "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException"
+    "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException",
+    "Chunk", "ChunkScorePair", "ChunkType"
 ]
