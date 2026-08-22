@@ -5,4 +5,5 @@
 .env
 **/.vscode/
 data/output/
+data/processed/
 *~
