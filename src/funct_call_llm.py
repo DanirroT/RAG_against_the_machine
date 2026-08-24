@@ -120,26 +120,84 @@ class RAGCodeBaseLLM():
             return
 
         elif self.arg_inputs.mode == "answer":
+            input_dir_str = "data/processed/"
+            output_dir_str = "data/answer/"
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+            output_dir_path.mkdir(parents=True)
             query = self.arg_inputs.question
             output_dir_str = ""
-            self._str_answer(query, output_dir_path)
+            self._str_answer(query, output_dir_path, self.arg_inputs.k)
 
         elif self.arg_inputs.mode == "answer_dataset":
+            input_dir_str = "data/processed/"
+            output_dir_str = "data/answers/"
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+            output_dir_path.mkdir(parents=True)
             query = self.arg_inputs.question
             output_dir_str = ""
             self._file_answer(query, output_dir_path)
 
         elif self.arg_inputs.mode == "search":
+            input_dir_str = "data/processed/"
+            output_dir_str = "data/result/"
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+            output_dir_path.mkdir(parents=True)
             lookup = self.arg_inputs.question
             output_dir_str = ""
             self._str_search(lookup, output_dir_path)
 
         elif self.arg_inputs.mode == "search_dataset":
+            input_dir_str = "data/processed/"
+            output_dir_str = "data/results/"
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+            output_dir_path.mkdir(parents=True)
             lookup = self.arg_inputs.question
             output_dir_str = ""
             self._file_search(lookup, output_dir_path)
 
         elif self.arg_inputs.mode == "evaluate":
+            code_questions_file_str = ("data/datasets/UnansweredQuestions/"
+                                       "dataset_code_public.json")
+            docs_questions_file_str = ("data/datasets/UnansweredQuestions/"
+                                       "dataset_docs_public.json")
+            code_answers_file_str = ("data/datasets/AnsweredQuestions/"
+                                     "dataset_code_public.json")
+            docs_answers_file_str = ("data/datasets/AnsweredQuestions/"
+                                     "dataset_docs_public.json")
+
+            code_questions_file = Path(code_questions_file_str)
+            docs_questions_file = Path(docs_questions_file_str)
+            code_answers_file = Path(code_answers_file_str)
+            docs_answers_file = Path(docs_answers_file_str)
+
+            output_dir_str = "data/eval_results/"
+            output_dir_path = Path(output_dir_str)
+            if output_dir_path.exists():
+                if output_dir_path.is_file():
+                    output_dir_path.unlink()
+                else:
+                    rmtree(output_dir_path)
+            output_dir_path.mkdir(parents=True)
             output_dir_str = ""
             self._evaluate(input_dir_path, output_dir_path)
 
@@ -249,23 +307,22 @@ class RAGCodeBaseLLM():
                             # print(list(zip(item.args.args,
                             #       item.args.defaults)))
                             funct = FunctHolder(
-                                        item.name,
-                                        item.lineno,
-                                        item.end_lineno if item.end_lineno
-                                        else item.lineno,
-                                        [arg.arg + ((" = " + str(defaults.value))
-                                                    if defaults is not None
-                                                    # if str(defaults) == str(None)
-                                                    else "")
-                                         for arg, defaults in zip(
-                                            item.args.args, item.args.defaults)],
-                                        str(ast.unparse(item.returns)
-                                            if item.returns else None),
-                                        ast.get_source_segment(file_str, item),
-                                        ast.get_docstring(item))
+                                item.name, item.lineno,
+                                item.end_lineno if item.end_lineno
+                                else item.lineno,
+                                [arg.arg + ((" = " + str(defaults.value))
+                                            if defaults is not None
+                                            else "")
+                                    for arg, defaults in zip(
+                                    item.args.args,
+                                    item.args.defaults)],
+                                str(ast.unparse(item.returns)
+                                    if item.returns else None),
+                                ast.get_source_segment(file_str, item),
+                                ast.get_docstring(item))
 
                             if (funct.body.count("\n") >
-                                self.arg_inputs.max_chunk_size):
+                                    self.arg_inputs.max_chunk_size):
                                 raise ValueError(
                                     f"Function '{funct.name}' is too large"
                                 )
@@ -348,12 +405,12 @@ class RAGCodeBaseLLM():
                                 )
                             elif len(token.map) == 1:
                                 section = MDSections(
-                                    tag, int(tag[1]), token.content,
+                                    tag, int(tag[0]), token.content,
                                     token.map[0], token.map[0]
                                 )
                             else:
                                 section = MDSections(
-                                    tag, int(tag[1]), token.content, -1, -1
+                                    tag, int(tag), token.content, -1, -1
                                 )
                             while stack and stack[-1].level >= section.level:
                                 stack.pop()
@@ -422,7 +479,8 @@ class RAGCodeBaseLLM():
 
         # input("starting creation")
         # for obj in ingest_out:
-        #     json_path = output_dir_path / obj.path.relative_to(input_dir_path)
+        #     json_path = (output_dir_path /
+        #                  obj.path.relative_to(input_dir_path))
         #     json_path = json_path.with_suffix(json_path.suffix + ".json")
         #     json_path.parent.mkdir(parents=True, exist_ok=True)
         #     print("folder created")
@@ -438,12 +496,17 @@ class RAGCodeBaseLLM():
         last_path: Path | None = None
 
         for obj in ingest_out_flattened:
-            current_path = output_dir_path / obj.path.relative_to(input_dir_path)
+            current_path = (output_dir_path /
+                            Path(obj.path).relative_to(
+                                input_dir_path)).with_suffix(
+                                    Path(obj.path).suffix + ".json")
 
-            print("path:\t", current_path, "\npath:\t", str(last_path), "\n\n")
+            # print("path:\t", current_path,
+            #       "\npath:\t", str(last_path), "\n\n")
 
             if not last_path or str(current_path) != str(last_path):
-                print("\t New", str(current_path), str(last_path), str(current_path) != str(last_path))
+                # print("\t New", str(current_path), str(last_path),
+                #       str(current_path) != str(last_path))
                 current_path.parent.mkdir(parents=True, exist_ok=True)
                 if last_path:
                     with last_path.open("a") as file:
@@ -451,17 +514,20 @@ class RAGCodeBaseLLM():
                 with current_path.open("x") as file:
                     file.write("[\n")
             else:
-                print("\t Same")
+                # print("\t Same")
                 with current_path.open("a") as file:
                     file.write(",\n")
             with current_path.open("a") as file:
                 json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
-            last_path  = current_path
-            input()
+            last_path = current_path
+            # input()
 
-        print("file created")
+        with last_path.open("a") as file:
+            file.write("\n]")
+        print("files created")
 
-    def flatten_file_holders(self, file_holders: list[FileHolder]) -> list[Chunk]:
+    def flatten_file_holders(self, file_holders: list[FileHolder]
+                             ) -> list[Chunk]:
 
         flattened_chunks: list[Chunk] = []
 
@@ -485,14 +551,16 @@ class RAGCodeBaseLLM():
                         )
                     )
 
-                flattened_chunks += self.flatten_md(file_holder.sections, file_holder.path)
+                flattened_chunks += self.flatten_md(
+                    file_holder.sections, file_holder.path)
 
             else:
                 counter = 0
                 for section in file_holder.sections:
                     flattened_chunks.append(
                         Chunk(
-                            id=f"other_{file_holder.path.stem}_section_{counter}",
+                            id=(f"other_{file_holder.path.stem}_"
+                                f"section_{counter}"),
                             path=str(file_holder.path),
                             parent=None,
                             type=ChunkType.OTHER,
@@ -537,7 +605,8 @@ class RAGCodeBaseLLM():
 
             flattened_chunks += [
                 Chunk(
-                    id=f"{py_holder.path.stem}_class_{cls.name}_method_{method.name}",
+                    id=(f"{py_holder.path.stem}_class_{cls.name}"
+                        f"_method_{method.name}"),
                     path=str(py_holder.path),
                     type=ChunkType.METHOD,
                     parent=cls.name,
@@ -550,7 +619,8 @@ class RAGCodeBaseLLM():
 
         return flattened_chunks
 
-    def flatten_md(self, md_holder: List[MDSections], path: Path) -> list[Chunk]:
+    def flatten_md(self, md_holder: list[MDSections], path: Path
+                   ) -> list[Chunk]:
 
         flattened_chunks: list[Chunk] = []
 
@@ -571,7 +641,7 @@ class RAGCodeBaseLLM():
 
         return flattened_chunks
 
-    def _str_answer(self, query: str, output_dir_path: Path) -> None:
+    def _str_answer(self, query: str, output_dir_path: Path, k: int) -> None:
         pass
 
     def _file_answer(self, query: str, output_dir_path: Path) -> None:

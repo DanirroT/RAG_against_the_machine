@@ -11,7 +11,7 @@ class InputHolder(BaseModel):
     mode: str = Field()
     max_chunk_size: int = Field(gt=0)
     dataset_path: str = Field(min_length=1)
-    k: float = Field(gt=0)
+    k: int = Field(gt=0)
     save_directory: str = Field(min_length=1)
     student_answer_path: str = Field(min_length=1)
     max_context_length: int = Field(gt=0)
@@ -261,6 +261,16 @@ class MDSections(SectionHolder):
             "content": self.content,
             "children": self.children,
         })
+
+    def extract(self) -> str:
+        return (
+            f"section_name: {self.name}\n" +
+            f"tag:\t{self.tag}\t"
+            f"lvl:\t{self.level}"
+            f"\n\n\"children\":\n{'\n\n'.join(map(str, self.children))}\n"
+            f"start={self.start_line}, end={self.end_line}\n"
+            f"{self.name}"
+        )
 
 
 class MDHolder(FileHolder):

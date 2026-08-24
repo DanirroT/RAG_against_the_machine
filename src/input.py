@@ -73,7 +73,7 @@ def val_args() -> InputHolder:
                                  "dataset_docs_public.json"),)
     parser.add_argument("--question", default="")
 
-    arg_inputs = cast(dict[str, str], vars(parser.parse_args()))
+    arg_inputs = vars(parser.parse_args())
 
     print()
     print(arg_inputs)
@@ -251,7 +251,7 @@ def ft_repr(s: str) -> str:
 
 
 def str_error(error_type: str, field: str, msg: str, input_raw: str,
-              expected: int | None) -> None:
+              expected: str | None) -> None:
 
     input_processed = len(input_raw)
 
