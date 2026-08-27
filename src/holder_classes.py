@@ -342,6 +342,9 @@ class ChunkType(Enum):
 
     OTHER = "other_section"
 
+    def __str__(self) -> str:
+        return self.value
+
 
 class Chunk(BaseModel):
     id: str
@@ -374,6 +377,7 @@ class Chunk(BaseModel):
 
 
 class ChunkScorePair(BaseModel):
+    id: str
     chunk: Chunk
     score: float
 

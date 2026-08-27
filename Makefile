@@ -6,7 +6,7 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/07/24 19:51:54 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/08/25 20:48:37 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -32,9 +32,8 @@ OBJ = $(SRC)/*.py
 
 VENV = .venv/
 
-DEBUGGER = $(PYTHON) pdb
-PYTHON = python3 -m
 UV_RUN = uv run python -m
+DEBUGGER = $(UV_RUN) pdb
 
 RM = rm -fr
 

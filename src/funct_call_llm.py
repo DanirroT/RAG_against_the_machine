@@ -1,22 +1,20 @@
 import sys
 from dotenv import load_dotenv
-# from tqdm import tqdm
 from pathlib import Path
 from shutil import rmtree
-# import httpcore
 from typing import Any, cast
 import json
-import ast
-from markdown_it import MarkdownIt
 from src import (get_from_json_file, create_file, create_dir,
-                 InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
-                 OtherHolder, FunctHolder, ClassHolder, DefFunctException,
-                 Chunk, ChunkScorePair, ChunkType
+                 InputHolder, DefFunctException,
+                 Chunk, ChunkScorePair, ChunkType,
+                 IngestorClass
                  )
 # from llm_sdk import Small_LLM_Model
 
 
 class RAGCodeBaseLLM():
+
+    _llm: None
 
     dataset: dict[str, Any]
 
@@ -29,7 +27,6 @@ class RAGCodeBaseLLM():
     # raw_prompts: list[str]
     # funct_defs: list[FunctDef]
 
-    # _llm: Small_LLM_Model
     # llm_files: dict[str, str]
 
     # vocab_text_int: dict[str, int]
@@ -58,6 +55,8 @@ class RAGCodeBaseLLM():
 
         force = True
 
+        self._llm = None
+
         if arg_inputs:
             print("arg_inputs Exists")
 
@@ -83,55 +82,19 @@ class RAGCodeBaseLLM():
         self.arg_inputs = arg_inputs
 
         if self.arg_inputs.mode == "index":
+            # input_dir_str = self.dataset
             input_dir_str = "data/to_process/"
+            # output_dir_str = save_directory
             output_dir_str = "data/processed/"
 
-            input_dir_path = Path(input_dir_str)
-            if not input_dir_path.exists():
-                raise ValueError(f"Path '{input_dir_str}' does not exist")
-            if not input_dir_path.is_dir():
-                raise ValueError(f"Path '{input_dir_str}' is not a Directory")
-
-            output_dir_path = Path(output_dir_str)
-            if output_dir_path.exists():
-                # if not output_dir_path.is_dir():
-                #     answer = input(
-                #         f"'{output_dir_str}' exists but is not a directory."
-                #         "\nReplace it with a directory? [y/N]: "
-                #     ).strip().lower()
-                # else:
-                #     answer = input(
-                #         f"Directory '{output_dir_str}' already exists.\n"
-                #         "Overwrite its contents? [y/N]: "
-                #     ).strip().lower()
-
-                # if answer != "y":
-                #     print("Operation cancelled.")
-                #     raise FileExistsError
-                # else:
-                if output_dir_path.is_file():
-                    output_dir_path.unlink()
-                else:
-                    rmtree(output_dir_path)
-            output_dir_path.mkdir(parents=True)
-
-            self._ingest(input_dir_path, output_dir_path)
+            self._ingest(input_dir_str, output_dir_str)
             print(f"Ingestion complete! Indices saved under {output_dir_str}")
             return
 
         elif self.arg_inputs.mode == "answer":
             input_dir_str = "data/processed/"
             output_dir_str = "data/answer/"
-            output_dir_path = Path(output_dir_str)
-            if output_dir_path.exists():
-                if output_dir_path.is_file():
-                    output_dir_path.unlink()
-                else:
-                    rmtree(output_dir_path)
-            output_dir_path.mkdir(parents=True)
-            query = self.arg_inputs.question
-            output_dir_str = ""
-            self._str_answer(query, output_dir_path, self.arg_inputs.k)
+            self._str_answer(input_dir_str, output_dir_str)
 
         elif self.arg_inputs.mode == "answer_dataset":
             input_dir_str = "data/processed/"
@@ -143,63 +106,35 @@ class RAGCodeBaseLLM():
                 else:
                     rmtree(output_dir_path)
             output_dir_path.mkdir(parents=True)
-            query = self.arg_inputs.question
-            output_dir_str = ""
-            self._file_answer(query, output_dir_path)
+            self._file_answer(input_dir_str, output_dir_str)
 
         elif self.arg_inputs.mode == "search":
             input_dir_str = "data/processed/"
             output_dir_str = "data/result/"
-            output_dir_path = Path(output_dir_str)
-            if output_dir_path.exists():
-                if output_dir_path.is_file():
-                    output_dir_path.unlink()
-                else:
-                    rmtree(output_dir_path)
-            output_dir_path.mkdir(parents=True)
-            lookup = self.arg_inputs.question
-            output_dir_str = ""
-            self._str_search(lookup, output_dir_path)
+            lookup = ""
+            self._str_search(lookup,
+                             input_dir_str, output_dir_str)
 
         elif self.arg_inputs.mode == "search_dataset":
             input_dir_str = "data/processed/"
             output_dir_str = "data/results/"
-            output_dir_path = Path(output_dir_str)
-            if output_dir_path.exists():
-                if output_dir_path.is_file():
-                    output_dir_path.unlink()
-                else:
-                    rmtree(output_dir_path)
-            output_dir_path.mkdir(parents=True)
-            lookup = self.arg_inputs.question
-            output_dir_str = ""
-            self._file_search(lookup, output_dir_path)
+            lookup = ""
+            self._file_search(lookup, input_dir_str, output_dir_str)
 
         elif self.arg_inputs.mode == "evaluate":
-            code_questions_file_str = ("data/datasets/UnansweredQuestions/"
-                                       "dataset_code_public.json")
-            docs_questions_file_str = ("data/datasets/UnansweredQuestions/"
-                                       "dataset_docs_public.json")
-            code_answers_file_str = ("data/datasets/AnsweredQuestions/"
-                                     "dataset_code_public.json")
-            docs_answers_file_str = ("data/datasets/AnsweredQuestions/"
-                                     "dataset_docs_public.json")
-
-            code_questions_file = Path(code_questions_file_str)
-            docs_questions_file = Path(docs_questions_file_str)
-            code_answers_file = Path(code_answers_file_str)
-            docs_answers_file = Path(docs_answers_file_str)
-
+            code_questions_str = ("data/datasets/UnansweredQuestions/"
+                                  "dataset_code_public.json")
+            docs_questions_str = ("data/datasets/UnansweredQuestions/"
+                                  "dataset_docs_public.json")
+            code_answers_str = ("data/datasets/AnsweredQuestions/"
+                                "dataset_code_public.json")
+            docs_answers_str = ("data/datasets/AnsweredQuestions/"
+                                "dataset_docs_public.json")
             output_dir_str = "data/eval_results/"
-            output_dir_path = Path(output_dir_str)
-            if output_dir_path.exists():
-                if output_dir_path.is_file():
-                    output_dir_path.unlink()
-                else:
-                    rmtree(output_dir_path)
-            output_dir_path.mkdir(parents=True)
-            output_dir_str = ""
-            self._evaluate(input_dir_path, output_dir_path)
+
+            self._evaluate(code_questions_str, docs_questions_str,
+                           code_answers_str, docs_answers_str,
+                           output_dir_str)
 
         # try:
         #     self._load_llm(mode)
@@ -226,434 +161,117 @@ class RAGCodeBaseLLM():
         #                      f"Callable Function number {error_len}: "
         #                      f"{self.funct_defs[error_len]}:\n\n{e}")
 
-    def redefine_inputs(self, arg_inputs: InputHolder) -> None:
+    def _ingest(self, input_dir_str: str, output_dir_str: str) -> None:
 
-        if arg_inputs:
-            print("arg_inputs Exists")
+        input_dir_path = Path(input_dir_str)
+        if not input_dir_path.exists():
+            raise ValueError(f"Path '{input_dir_str}' does not exist")
+        if not input_dir_path.is_dir():
+            raise ValueError(f"Path '{input_dir_str}' is not a Directory")
 
-            self.save_directory = create_dir(
-                arg_inputs.save_directory)
-            print(f"{self.save_directory} Created")
-            self.student_answer_path = create_file(
-                arg_inputs.student_answer_path)
-            print(f"{self.student_answer_path} Created")
-            self.student_search_results_path = create_file(
-                arg_inputs.student_search_results_path)
-            print(f"{self.student_search_results_path} Created")
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            # if not output_dir_path.is_dir():
+            #     answer = input(
+            #         f"'{output_dir_str}' exists but is not a directory."
+            #         "\nReplace it with a directory? [y/N]: "
+            #     ).strip().lower()
+            # else:
+            #     answer = input(
+            #         f"Directory '{output_dir_str}' already exists.\n"
+            #         "Overwrite its contents? [y/N]: "
+            #     ).strip().lower()
 
-            self.dataset = get_from_json_file(arg_inputs.dataset_path)
-            print(f"{self.dataset} Loaded")
-
-        else:
-            raise ValueError("No Arguments were passed to the Class")
-
-        try:
-
-            self._make_deffunct_ids()
-
-        except DefFunctException as e:
-            error_len = e.e_len
-            del e.e_len
-            raise ValueError("An error has occurred in the Processing of "
-                             f"Callable Function number {error_len}: "
-                             f"{self.funct_defs[error_len]}:\n\n{e}")
-
-    def _ingest(self, input_dir_path: Path, output_dir_path: Path) -> None:
+            # if answer != "y":
+            #     print("Operation cancelled.")
+            #     raise FileExistsError
+            # else:
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
+            else:
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
 
         print("input:", input_dir_path)
 
-        md_parse = MarkdownIt()
+        IngestorClass(input_dir_path, output_dir_path, self.arg_inputs)
 
-        ingest_out: list[FileHolder] = []
+    def _str_answer(self, input_dir_str: str, output_dir_str: str) -> None:
 
-        print("\n\n")
-        for path in input_dir_path.rglob("*"):
-            print(path)
-            if path.is_dir() or any(part.startswith(".")
-                                    for part in path.parts):
-                print()
-                continue
-            file_out_lists: FileHolder
-            if path.is_file():
-                with path.open("r") as file:
-                    file_str = file.read()
-                if str(path).endswith(".py"):
-                    file_out_lists = PyHolder(path)
-                    parsed = ast.parse(file_str)
-                    # print(ast.dump(parsed, indent=4), end="\n\n\n")
-                    for item in parsed.body:
-                        # print(item)
+        pass
 
-                        if (isinstance(item, ast.Import)):
-                            for file_import in item.names:
-                                file_out_lists.imports.append(
-                                    file_import.name +
-                                    ((" as " + file_import.asname)
-                                     if file_import.asname else ""))
-
-                        if (isinstance(item, ast.ImportFrom)):
-
-                            for file_import in item.names:
-                                file_out_lists.imports.append(
-                                    ((item.module + ".")
-                                     if item.module else "")
-                                    + file_import.name +
-                                    ((" as " + file_import.asname)
-                                     if file_import.asname else ""))
-
-                        if isinstance(item, ast.FunctionDef):
-                            # print(item.name, item.args.defaults[0].__dict__
-                            #       if item.args.defaults else "")
-                            # print(list(zip(item.args.args,
-                            #       item.args.defaults)))
-                            funct = FunctHolder(
-                                item.name, item.lineno,
-                                item.end_lineno if item.end_lineno
-                                else item.lineno,
-                                [arg.arg + ((" = " + str(defaults.value))
-                                            if defaults is not None
-                                            else "")
-                                    for arg, defaults in zip(
-                                    item.args.args,
-                                    item.args.defaults)],
-                                str(ast.unparse(item.returns)
-                                    if item.returns else None),
-                                ast.get_source_segment(file_str, item),
-                                ast.get_docstring(item))
-
-                            if (funct.body.count("\n") >
-                                    self.arg_inputs.max_chunk_size):
-                                raise ValueError(
-                                    f"Function '{funct.name}' is too large"
-                                )
-
-                            file_out_lists.functs.append(funct)
-
-                        if isinstance(item, ast.ClassDef):
-                            class_object = ClassHolder(
-                                item.name,
-                                item.lineno,
-                                item.end_lineno,
-                                ast.get_docstring(item),
-                                list(map(ast.unparse, item.bases)))
-                            for class_item in item.body:
-                                if isinstance(class_item, ast.FunctionDef):
-                                    # print(class_item.name, type(
-                                    #   class_object.methods))
-                                    # print(len(class_item.args.args),
-                                    #       len(class_item.args.defaults))
-                                    # group = list(zip(class_item.args.args,
-                                    #                  class_item.args.defaults))
-                                    # for arg, const in group:
-                                    #     print(arg.arg, const.value)
-                                    # print(list(zip(class_item.args.args,
-                                    #            class_item.args.defaults)))
-                                    class_object.methods.append(
-                                        FunctHolder(
-                                            class_item.name,
-                                            class_item.lineno,
-                                            class_item.end_lineno
-                                            if class_item.end_lineno
-                                            else class_item.lineno,
-                                            [arg.arg + ((
-                                                " = " + str(defaults.value))
-                                                if str(defaults) == str(None)
-                                                else "")
-                                             for arg, defaults in zip(
-                                                class_item.args.args,
-                                                class_item.args.defaults)],
-                                            str(ast.unparse(
-                                                class_item.returns)),
-                                            ast.get_source_segment(
-                                                file_str, class_item),
-                                            str(ast.get_docstring(class_item)))
-                                    )
-                                if isinstance(class_item, ast.AnnAssign):
-                                    class_object.var_annotations.append(
-                                        ast.unparse(class_item.target) + ": " +
-                                        ast.unparse(class_item.annotation) +
-                                        ((" = " + ast.unparse(
-                                            class_item.value))
-                                         if class_item.value else "")
-                                    )
-                            file_out_lists.classes.append(class_object)
-
-                elif str(path).endswith(".md"):
-                    file_out_lists = MDHolder(path)
-                    md_parsed = md_parse.parse(file_str)
-
-                    waiting_heading: bool = False
-                    stack: list[MDSections] = []
-                    tag: str = "0"
-
-                    for token in md_parsed:
-                        print(token)
-                        if token.type == "heading_open":
-                            waiting_heading = True
-                            tag = token.tag
-                            continue
-                        if token.type in ["paragraph_close",
-                                          "paragraph_open",
-                                          "heading_close"]:
-                            continue
-
-                        if waiting_heading:
-                            if len(token.map) == 2:
-                                section = MDSections(
-                                    tag, int(tag[1]), token.content,
-                                    token.map[0], token.map[1]
-                                )
-                            elif len(token.map) == 1:
-                                section = MDSections(
-                                    tag, int(tag[0]), token.content,
-                                    token.map[0], token.map[0]
-                                )
-                            else:
-                                section = MDSections(
-                                    tag, int(tag), token.content, -1, -1
-                                )
-                            while stack and stack[-1].level >= section.level:
-                                stack.pop()
-                            if stack:
-                                stack[-1].children.append(section)
-                            else:
-                                file_out_lists.sections.append(section)
-
-                            stack.append(section)
-
-                            waiting_heading = False
-                            continue
-
-                        if stack:
-                            stack[-1].content += token.content + "\n"
-
-                        else:
-                            # Text before the first heading
-                            if len(token.map) == 2:
-                                section = MDSections(
-                                    tag, int(tag), "introduction",
-                                    token.map[0], token.map[1], token.content,
-                                )
-                            elif len(token.map) == 1:
-                                section = MDSections(
-                                    tag, int(tag), "introduction",
-                                    token.map[0], token.map[0], token.content,
-                                )
-                            else:
-                                section = MDSections(
-                                    tag, int(tag), "introduction",
-                                    -1, -1, token.content
-                                )
-                            file_out_lists.introduction = section
-
-                    # file_sections = file_str.split("\n#")
-
-                    # file_out_lists["Introduction"] = repr(file_sections[0]
-                    #                                       + "\n")
-                    # file_out_lists["Sections"] = ([
-                    #     ("#" + line + "\n")
-                    #     for line in file_sections[1:-1]] +
-                    #     ["#" + file_sections[-1]])
-
-                else:
-                    file_out_lists = OtherHolder(path)
-                    print(file_str)
-                    file_sections = file_str.split("\n\n")
-
-                    file_out_lists.sections = ([
-                        line + "\n\n"
-                        for line in file_sections[:-1]] +
-                        [file_sections[-1]])
-
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
             else:
-                continue
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
 
-            print("\n\n")
-            ingest_out.append(file_out_lists)
+    def _file_answer(self, input_dir_str: str, output_dir_str: str) -> None:
 
-        print("current output\n\n")
+        pass
 
-        print("\n".join(map(str, ingest_out)))
-
-        print("output:", output_dir_path)
-
-        # input("starting creation")
-        # for obj in ingest_out:
-        #     json_path = (output_dir_path /
-        #                  obj.path.relative_to(input_dir_path))
-        #     json_path = json_path.with_suffix(json_path.suffix + ".json")
-        #     json_path.parent.mkdir(parents=True, exist_ok=True)
-        #     print("folder created")
-        #     with json_path.open("w") as file:
-        #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
-
-        ingest_out_flattened = self.flatten_file_holders(ingest_out)
-
-        print("flattened output:", "\n\n".join(map(str, ingest_out_flattened)))
-
-        input()
-
-        last_path: Path | None = None
-
-        for obj in ingest_out_flattened:
-            current_path = (output_dir_path /
-                            Path(obj.path).relative_to(
-                                input_dir_path)).with_suffix(
-                                    Path(obj.path).suffix + ".json")
-
-            # print("path:\t", current_path,
-            #       "\npath:\t", str(last_path), "\n\n")
-
-            if not last_path or str(current_path) != str(last_path):
-                # print("\t New", str(current_path), str(last_path),
-                #       str(current_path) != str(last_path))
-                current_path.parent.mkdir(parents=True, exist_ok=True)
-                if last_path:
-                    with last_path.open("a") as file:
-                        file.write("\n]\n")
-                with current_path.open("x") as file:
-                    file.write("[\n")
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
             else:
-                # print("\t Same")
-                with current_path.open("a") as file:
-                    file.write(",\n")
-            with current_path.open("a") as file:
-                json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
-            last_path = current_path
-            # input()
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
 
-        with last_path.open("a") as file:
-            file.write("\n]")
-        print("files created")
+    def _str_search(self, lookup: str,
+                    input_dir_str: str, output_dir_str: str) -> None:
 
-    def flatten_file_holders(self, file_holders: list[FileHolder]
-                             ) -> list[Chunk]:
+        pass
 
-        flattened_chunks: list[Chunk] = []
-
-        for file_holder in file_holders:
-            if isinstance(file_holder, PyHolder):
-
-                flattened_chunks += self.flatten_py(file_holder)
-
-            elif isinstance(file_holder, MDHolder):
-
-                if file_holder.introduction:
-                    flattened_chunks.append(
-                        Chunk(
-                            id=f"{file_holder.path.stem}_introduction",
-                            path=str(file_holder.path),
-                            type=ChunkType.INTRODUCTION,
-                            parent=None,
-                            start_line=file_holder.introduction.start_line,
-                            end_line=file_holder.introduction.end_line,
-                            content=file_holder.introduction.content
-                        )
-                    )
-
-                flattened_chunks += self.flatten_md(
-                    file_holder.sections, file_holder.path)
-
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
             else:
-                counter = 0
-                for section in file_holder.sections:
-                    flattened_chunks.append(
-                        Chunk(
-                            id=(f"other_{file_holder.path.stem}_"
-                                f"section_{counter}"),
-                            path=str(file_holder.path),
-                            parent=None,
-                            type=ChunkType.OTHER,
-                            start_line=-1,
-                            end_line=-1,
-                            content=section
-                        )
-                    )
-                    counter += 1
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
 
-        return flattened_chunks
+    def _file_search(self, lookup: str,
+                     input_dir_str: str, output_dir_str: str) -> None:
 
-    def flatten_py(self, py_holder: PyHolder) -> list[Chunk]:
-
-        flattened_chunks: list[Chunk] = []
-
-        for funct in py_holder.functs:
-            flattened_chunks.append(
-                Chunk(
-                    id=f"{py_holder.path.stem}_function_{funct.name}",
-                    path=str(py_holder.path),
-                    type=ChunkType.FUNCTION,
-                    parent=None,
-                    start_line=funct.start_line,
-                    end_line=funct.end_line,
-                    content=funct.body
-                )
-            )
-        for cls in py_holder.classes:
-            flattened_chunks.append(
-                Chunk(
-                    id=f"{py_holder.path.stem}_class_{cls.name}",
-                    path=str(py_holder.path),
-                    type=ChunkType.CLASS,
-                    parent=None,
-                    start_line=cls.start_line,
-                    end_line=cls.end_line,
-                    content=(cls.docstring if cls.docstring else ""
-                             + "\n".join(cls.var_annotations))
-                )
-            )
-
-            flattened_chunks += [
-                Chunk(
-                    id=(f"{py_holder.path.stem}_class_{cls.name}"
-                        f"_method_{method.name}"),
-                    path=str(py_holder.path),
-                    type=ChunkType.METHOD,
-                    parent=cls.name,
-                    start_line=method.start_line,
-                    end_line=method.end_line,
-                    content=method.body
-                )
-                for method in cls.methods
-            ]
-
-        return flattened_chunks
-
-    def flatten_md(self, md_holder: list[MDSections], path: Path
-                   ) -> list[Chunk]:
-
-        flattened_chunks: list[Chunk] = []
-
-        for section in md_holder:
-            flattened_chunks.append(
-                Chunk(
-                    id=f"{path.stem}_section_{section.name}",
-                    path=str(path),
-                    type=ChunkType.SECTION,
-                    parent=None,
-                    start_line=section.start_line,
-                    end_line=section.end_line,
-                    content=section.content
-                )
-            )
-            if section.children:
-                flattened_chunks += self.flatten_md(section.children, path)
-
-        return flattened_chunks
-
-    def _str_answer(self, query: str, output_dir_path: Path, k: int) -> None:
         pass
 
-    def _file_answer(self, query: str, output_dir_path: Path) -> None:
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
+            else:
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
+
+    def _evaluate(self, code_questions_str: str, docs_questions_str: str,
+                  code_answers_str: str, docs_answers_str: str,
+                  output_dir_str: str) -> None:
+
         pass
 
-    def _str_search(self, lookup: str, output_dir_path: Path) -> None:
-        pass
+        code_questions_file = Path(code_questions_str)
+        docs_questions_file = Path(docs_questions_str)
+        code_answers_file = Path(code_answers_str)
+        docs_answers_file = Path(docs_answers_str)
 
-    def _file_search(self, lookup: str, output_dir_path: Path) -> None:
-        pass
-
-    def _evaluate(self, input_dir_path: Path, output_dir_path: Path) -> None:
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
+            else:
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
         pass
 
     def _load_llm(self, mode: bool = True) -> None:
