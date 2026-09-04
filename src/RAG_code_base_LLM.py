@@ -7,14 +7,13 @@ import json
 from src import (get_from_json_file, create_file, create_dir,
                  InputHolder, DefFunctException,
                  Chunk, ChunkScorePair, ChunkType,
-                 IngestorClass
+                 IngestorClass, Small_LLM_Model
                  )
-# from llm_sdk import Small_LLM_Model
 
 
 class RAGCodeBaseLLM():
 
-    _llm: None
+    _llm: Small_LLM_Model
 
     dataset: dict[str, Any]
 
@@ -27,10 +26,10 @@ class RAGCodeBaseLLM():
     # raw_prompts: list[str]
     # funct_defs: list[FunctDef]
 
-    # llm_files: dict[str, str]
+    llm_files: dict[str, str]
 
-    # vocab_text_int: dict[str, int]
-    # vocab_int_text: dict[int, str]
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
 
     # tokenized_int_funct_list: list[list[int]]
     # instructions: list[int]
@@ -276,14 +275,14 @@ class RAGCodeBaseLLM():
 
     def _load_llm(self, mode: bool = True) -> None:
 
-        if self._llm:
-            return
+        # if self._llm:
+        #     return
 
         self.llm_files = {}
         print()
 
         load_dotenv()
-        # self._llm = Small_LLM_Model()
+        self._llm = Small_LLM_Model(mode)
 
         self.llm_files["vocab"] = self._llm.get_path_to_vocab_file()
         self.llm_files["merges"] = self._llm.get_path_to_merges_file()

@@ -5,6 +5,8 @@ from pathlib import Path
 # from enum import Enum
 from typing import Any
 
+from src import Small_LLM_Model
+
 
 class InputHolder(BaseModel):
 
@@ -363,7 +365,7 @@ class Chunk(BaseModel):
 
         return (self)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, llm: Small_LLM_Model) -> dict[str, Any]:
 
         return {
             "id": self.id,
@@ -372,103 +374,64 @@ class Chunk(BaseModel):
             "parent": self.parent,
             "start_line": self.start_line,
             "end_line": self.end_line,
-            "content": self.content
+            "content": self.content,
+            "vector": self.to_vector(llm)
         }
+
+    def to_vector(self, llm: Small_LLM_Model, whole: bool = False
+                  ) -> list[int]:
+        if whole:
+            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+                              f"start_line: {self.start_line} "
+                              f"end_line: {self.end_line}"
+                              f"content:\n{self.content}")
+        return llm.encode(self.content)
+
+    def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
+                    ) -> list["Chunk"]:
+        if len(self.to_vector(llm)) <= max_chunk_size:
+            return [self]
+
+        content_lines = self.content.splitlines(keepends=True)
+        chunks: list[Chunk] = []
+        current_chunk_lines: list[str] = []
+        current_start_line = self.start_line
+
+        for i, line in enumerate(content_lines):
+            current_chunk_lines.append(line)
+            if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
+                # Create a new chunk with the accumulated lines
+                new_chunk = Chunk(
+                    id=f"{self.id}_part{len(chunks)+1}",
+                    path=self.path,
+                    type=self.type,
+                    parent=self.parent,
+                    start_line=current_start_line,
+                    end_line=current_start_line + len(current_chunk_lines) - 1,
+                    content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
+                )
+                chunks.append(new_chunk)
+                # Reset for the next chunk
+                current_chunk_lines = [line]  # Start with the overflowing line
+                current_start_line += len(current_chunk_lines) - 1
+
+        # Add the last chunk if there are remaining lines
+        if current_chunk_lines:
+            new_chunk = Chunk(
+                id=f"{self.id}_part{len(chunks)+1}",
+                path=self.path,
+                type=self.type,
+                parent=self.parent,
+                start_line=current_start_line,
+                end_line=current_start_line + len(current_chunk_lines) - 1,
+                content="".join(current_chunk_lines)
+            )
+            chunks.append(new_chunk)
+
+        return chunks
 
 
 class ChunkScorePair(BaseModel):
     id: str
     chunk: Chunk
     score: float
-
-
-"""
-class Parameter(BaseModel):
-    p_name: str = Field(min_length=1)
-    p_type: str = Field(min_length=1)
-
-    # p_name: str
-    # p_type: str
-
-    # def __str__(self) -> str:
-    #     return (
-    #         f"{self.p_name} t: {self.p_type}"
-    #     )
-
-    # def __str__(self) -> str:
-    #     return (
-    #         f"\n\t\t\t\"{self.p_name}\": " "{"
-    #         f"\n\t\t\t\t\"type\": \"{self.p_type}\"" "\n\t\t\t}"
-    #     )
-
-    def __str__(self) -> str:
-        return (
-            f"\"{self.p_name}\":" "{"
-            f"\"type\":\"{self.p_type}\"" "}"
-        )
-
-
-# class Returns(BaseModel):
-#     # pass
-#     p_type: str = Field(min_length=1)
-
-
-class FunctDef(BaseModel):
-    name: str = Field(min_length=1)
-    description: str = Field(default="")
-    parameters: list[Parameter] = Field()
-    returns: str = Field(min_length=1)
-
-    # name: str
-    # description: str
-    # parameters: list[Parameter]
-    # returns: str
-
-    # def __str__(self) -> str:
-    #     return (
-    #         f"Name: {self.name}\n"
-    #         f"Description: {self.description}\n"
-    #         f"Params: {''.join(map(str, self.parameters))}\n"
-    #         f"Return: {self.returns}"
-    #     )
-
-    # def __str__(self) -> str:
-    #     return (
-    #         "\t{\n"
-    #         f"\t\t\"name\": \"{self.name}\",\n"
-    #         f"\t\t\"description\": \"{self.description}\",\n"
-    #         "\t\t\"parameters\": {"
-    #         f"{','.join(map(str, self.parameters))}\n"
-    #         "\t\t},\n"
-    #         "\t\t\"return\": {"
-    #         f"\n\t\t\t\"type\": \"{self.returns}\""
-    #         "\n\t}\n"
-    #     )
-
-    # def __str__(self) -> str:
-    #     return (
-    #         "{"
-    #         f"\"name\":\"{self.name}\","
-    #         f"\"description\":\"{self.description}\","
-    #         "\"parameters\":{"
-    #         f"{','.join(map(str, self.parameters))}"
-    #         "},"
-    #         "\"return\":{"
-    #         f"\"type\":\"{self.returns}\""
-    #         "}}\n"
-    #     )
-
-    def __str__(self) -> str:
-        return (
-            f"\"name\":\"{self.name}\","
-            f"\"description\":\"{self.description}\","
-            "\"parameters\":"
-            f"{','.join(map(str, self.parameters))}"
-            f",\"return type\":\"{self.returns}\"\n"
-        )
-
-
-# print(FunctDef(name="n", description="desc",
-#                parameters=[Parameter(p_name="a", p_type="number")],
-#                returns="number"))
-"""

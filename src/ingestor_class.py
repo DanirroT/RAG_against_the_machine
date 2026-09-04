@@ -2,14 +2,16 @@ from pathlib import Path
 from typing import cast
 import json
 import ast
+from dotenv import load_dotenv
 from markdown_it import MarkdownIt
 from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
-                 OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkType
-                 )
+                 OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkType,
+                 Small_LLM_Model)
 
 
 class IngestorClass():
 
+    _llm: Small_LLM_Model
     arg_inputs: InputHolder
 
     def __init__(self, input_dir_path: Path, output_dir_path: Path,
@@ -35,11 +37,14 @@ class IngestorClass():
         #     with json_path.open("w") as file:
         #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
 
+        self._load_llm(False)
+
         ingest_out_flattened = self.flatten_file_holders(ingest_out)
 
         print("flattened output:", "\n\n".join(map(str, ingest_out_flattened)))
 
         input()
+
 
         last_path: Path | None = None
 
@@ -66,7 +71,8 @@ class IngestorClass():
                 with current_path.open("a") as file:
                     file.write(",\n")
             with current_path.open("a") as file:
-                json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
+                json.dump(obj.to_dict(self._llm), file, indent=4,
+                          ensure_ascii=False)
             last_path = current_path
             # input()
 
@@ -357,7 +363,7 @@ class IngestorClass():
                     )
                     counter += 1
 
-        return flattened_chunks
+        return self.split_chunks(flattened_chunks)
 
     def flatten_py(self, py_holder: PyHolder) -> list[Chunk]:
 
@@ -439,3 +445,66 @@ class IngestorClass():
                 flattened_chunks += self.flatten_md(section.children, path)
 
         return flattened_chunks
+
+    def split_chunks(self, chunks: list[Chunk]) -> list[Chunk]:
+
+        split_chunks: list[Chunk] = []
+
+        self.arg_inputs.max_context_length = 100
+
+
+        for chunk in chunks:
+            nb_splits = 0
+            input("\n\n")
+            whole_vector_len = len(chunk.to_vector(self._llm, whole=True))
+            if (whole_vector_len > self.arg_inputs.max_context_length):
+                nb_splits = ((whole_vector_len //
+                              (self.arg_inputs.max_context_length - 20)) + 1)
+                split_size = len(chunk.content) // nb_splits
+                print(f"({whole_vector_len}) - Splitting {len(chunk.content)} into {nb_splits} sub-chunks of size {split_size}")
+                for i in range(nb_splits):
+                    start = ((i * split_size - 5) if i != 0 else 0)
+                    end = (((i+1) * split_size + 5) if i != nb_splits - 1 else len(chunk.content))
+                    print(f"sub-chunk {i+1}: ",
+                          start, "-", end, sep="")
+                    new_chunk = Chunk(
+                        id=f"{chunk.id}.sub{i}",
+                        path=chunk.path,
+                        type=chunk.type,
+                        parent=chunk.parent,
+                        start_line=chunk.start_line,
+                        end_line=chunk.end_line,
+                        content=(chunk.content[start:end])
+                    )
+                    split_chunks.append(new_chunk)
+
+            else:
+                print(f"({whole_vector_len}) - Not Splitting {len(chunk.content)}")
+                split_chunks.append(chunk)
+
+            for sub_chunk in split_chunks[-nb_splits if nb_splits else -1:]:
+                print(len(sub_chunk.to_vector(self._llm, whole=True)))
+
+        return split_chunks
+
+    def _load_llm(self, mode: bool = True) -> None:
+
+        self.llm_files = {}
+        print()
+
+        load_dotenv()
+        # self._llm = Small_LLM_Model(mode)
+        self._llm = Small_LLM_Model(mode, device="cpu")
+
+        self.llm_files["vocab"] = self._llm.get_path_to_vocab_file()
+        self.llm_files["merges"] = self._llm.get_path_to_merges_file()
+        self.llm_files["tokenizer"] = (
+            self._llm.get_path_to_tokenizer_file())
+
+        with open(self.llm_files["vocab"]) as vocab_file:
+            self.vocab_text_int: dict[str, int] = json.load(vocab_file)
+
+        self.vocab_int_text = {}
+
+        for k, v in self.vocab_text_int.items():
+            self.vocab_int_text[v] = k
