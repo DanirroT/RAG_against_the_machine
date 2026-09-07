@@ -2,7 +2,7 @@ from .llm_sdk import Small_LLM_Model
 from .holder_classes import (InputHolder, DefFunctException,
                              FileHolder, PyHolder, MDHolder, MDSections,
                              OtherHolder, FunctHolder, ClassHolder,
-                             Chunk, ChunkScorePair, ChunkType)
+                             Chunk, ChunkRaw, ChunkScorePair, ChunkType)
 from .input import (val_args, get_from_json_file,
                     ft_repr, error_processing, create_dir, create_file)
 from .ingestor_class import IngestorClass
@@ -17,6 +17,6 @@ __all__: list[str] = [
     "create_file", "create_dir",
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",
     "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException",
-    "Chunk", "ChunkScorePair", "ChunkType",
+    "Chunk", "ChunkRaw", "ChunkScorePair", "ChunkType",
     "IngestorClass"
 ]

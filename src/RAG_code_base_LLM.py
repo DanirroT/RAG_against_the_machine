@@ -6,7 +6,7 @@ from typing import Any, cast
 import json
 from src import (get_from_json_file, create_file, create_dir,
                  InputHolder, DefFunctException,
-                 Chunk, ChunkScorePair, ChunkType,
+                 Chunk, ChunkRaw, ChunkScorePair, ChunkType,
                  IngestorClass, Small_LLM_Model
                  )
 

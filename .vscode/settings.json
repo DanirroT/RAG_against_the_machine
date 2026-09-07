@@ -15,6 +15,7 @@
         "huggingface",
         "ingestor",
         "ints",
+        "keepends",
         "logit",
         "logits",
         "moulinette",

@@ -1,5 +1,5 @@
 from enum import Enum
-from pydantic import BaseModel, Field, model_validator  # , field_validator
+from pydantic import BaseModel, Field, model_validator
 from abc import ABC, abstractmethod
 from pathlib import Path
 # from enum import Enum
@@ -348,14 +348,108 @@ class ChunkType(Enum):
         return self.value
 
 
-class Chunk(BaseModel):
+class ChunkRaw(BaseModel):
     id: str
-    path: str
+    path: Path
     type: ChunkType
     parent: str | None
     start_line: int
     end_line: int
     content: str
+    # content_vector: list[int]
+
+    @model_validator(mode="after")
+    def validate_inputs(self) -> "ChunkRaw":
+
+        if self.type == ChunkType.METHOD and not self.parent:
+            raise ValueError("A method chunk must have a parent class.")
+
+        return (self)
+
+    def to_dict(self, llm: Small_LLM_Model) -> dict[str, Any]:
+
+        return {
+            "id": self.id,
+            "path": str(self.path),
+            "type": str(self.type),
+            "parent": self.parent,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "content": llm.decode(self.content_vector),
+            "vector": self.content_vector
+        }
+
+    def to_vector(self, llm: Small_LLM_Model, mode: str = "c"
+                  ) -> list[int]:
+        if mode == "h":
+            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+                              f"start_line: {self.start_line} "
+                              f"end_line: {self.end_line}\n"
+                              "content:\n")
+        if mode == "a":
+            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+                              f"start_line: {self.start_line} "
+                              f"end_line: {self.end_line}\n"
+                              f"content:\n{self.content}")
+        if mode == "c":
+            return llm.encode(self.content)
+        else:
+            raise ValueError(f"'{mode}' is not a valid mode of "
+                             "'ChunkRaw.to_vector()'. Must be one of: "
+                             "'C' 'h' 'a'")
+
+    # def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
+    #                 ) -> list["Chunk"]:
+    #     if len(self.to_vector(llm)) <= max_chunk_size:
+    #         return [self]
+
+    #     content_lines = self.content.splitlines(keepends=True)
+    #     chunks: list[Chunk] = []
+    #     current_chunk_lines: list[str] = []
+    #     current_start_line = self.start_line
+
+    #     for i, line in enumerate(content_lines):
+    #         current_chunk_lines.append(line)
+    #         if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
+    #             # Create a new chunk with the accumulated lines
+    #             new_chunk = Chunk(
+    #                 id=f"{self.id}_part{len(chunks)+1}",
+    #                 path=self.path,
+    #                 type=self.type,
+    #                 parent=self.parent,
+    #                 start_line=current_start_line,
+    #                 end_line=current_start_line + len(current_chunk_lines) - 1,
+    #                 content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
+    #             )
+    #             chunks.append(new_chunk)
+    #             # Reset for the next chunk
+    #             current_chunk_lines = [line]  # Start with the overflowing line
+    #             current_start_line += len(current_chunk_lines) - 1
+
+    #     # Add the last chunk if there are remaining lines
+    #     if current_chunk_lines:
+    #         new_chunk = Chunk(
+    #             id=f"{self.id}_part{len(chunks)+1}",
+    #             path=self.path,
+    #             type=self.type,
+    #             parent=self.parent,
+    #             start_line=current_start_line,
+    #             end_line=current_start_line + len(current_chunk_lines) - 1,
+    #             content="".join(current_chunk_lines)
+    #         )
+    #         chunks.append(new_chunk)
+
+    #     return chunks
+
+
+class Chunk(BaseModel):
+    id: str
+    path: Path
+    type: ChunkType
+    parent: str | None
+    start_line: int
+    end_line: int
+    content_vector: list[int]
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "Chunk":
@@ -374,61 +468,74 @@ class Chunk(BaseModel):
             "parent": self.parent,
             "start_line": self.start_line,
             "end_line": self.end_line,
-            "content": self.content,
-            "vector": self.to_vector(llm)
+            "content": llm.decode(self.content_vector),
+            "vector": self.content_vector
         }
 
-    def to_vector(self, llm: Small_LLM_Model, whole: bool = False
-                  ) -> list[int]:
-        if whole:
-            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
-                              f"start_line: {self.start_line} "
-                              f"end_line: {self.end_line}"
-                              f"content:\n{self.content}")
-        return llm.encode(self.content)
+    def to_str(self, llm: Small_LLM_Model) -> str:
 
-    def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
-                    ) -> list["Chunk"]:
-        if len(self.to_vector(llm)) <= max_chunk_size:
-            return [self]
+        return f"""
+"id": {self.id},
+"path": {str(self.path)},
+"type": {str(self.type)},
+"parent": {self.parent},
+"start_line": {self.start_line},
+"end_line": {self.end_line},
+"content": {llm.decode(self.content_vector)},
+        """
+        # "vector": self.content_vector
 
-        content_lines = self.content.splitlines(keepends=True)
-        chunks: list[Chunk] = []
-        current_chunk_lines: list[str] = []
-        current_start_line = self.start_line
+    # def to_vector(self, llm: Small_LLM_Model, whole: bool = False
+    #               ) -> list[int]:
+    #     if whole:
+    #         return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+    #                           f"start_line: {self.start_line} "
+    #                           f"end_line: {self.end_line}"
+    #                           f"content:\n{self.content}")
+    #     return llm.encode(self.content)
 
-        for i, line in enumerate(content_lines):
-            current_chunk_lines.append(line)
-            if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
-                # Create a new chunk with the accumulated lines
-                new_chunk = Chunk(
-                    id=f"{self.id}_part{len(chunks)+1}",
-                    path=self.path,
-                    type=self.type,
-                    parent=self.parent,
-                    start_line=current_start_line,
-                    end_line=current_start_line + len(current_chunk_lines) - 1,
-                    content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
-                )
-                chunks.append(new_chunk)
-                # Reset for the next chunk
-                current_chunk_lines = [line]  # Start with the overflowing line
-                current_start_line += len(current_chunk_lines) - 1
+    # def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
+    #                 ) -> list["Chunk"]:
+    #     if len(self.to_vector(llm)) <= max_chunk_size:
+    #         return [self]
 
-        # Add the last chunk if there are remaining lines
-        if current_chunk_lines:
-            new_chunk = Chunk(
-                id=f"{self.id}_part{len(chunks)+1}",
-                path=self.path,
-                type=self.type,
-                parent=self.parent,
-                start_line=current_start_line,
-                end_line=current_start_line + len(current_chunk_lines) - 1,
-                content="".join(current_chunk_lines)
-            )
-            chunks.append(new_chunk)
+    #     content_lines = self.content.splitlines(keepends=True)
+    #     chunks: list[Chunk] = []
+    #     current_chunk_lines: list[str] = []
+    #     current_start_line = self.start_line
 
-        return chunks
+    #     for i, line in enumerate(content_lines):
+    #         current_chunk_lines.append(line)
+    #         if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
+    #             # Create a new chunk with the accumulated lines
+    #             new_chunk = Chunk(
+    #                 id=f"{self.id}_part{len(chunks)+1}",
+    #                 path=self.path,
+    #                 type=self.type,
+    #                 parent=self.parent,
+    #                 start_line=current_start_line,
+    #                 end_line=current_start_line + len(current_chunk_lines) - 1,
+    #                 content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
+    #             )
+    #             chunks.append(new_chunk)
+    #             # Reset for the next chunk
+    #             current_chunk_lines = [line]  # Start with the overflowing line
+    #             current_start_line += len(current_chunk_lines) - 1
+
+    #     # Add the last chunk if there are remaining lines
+    #     if current_chunk_lines:
+    #         new_chunk = Chunk(
+    #             id=f"{self.id}_part{len(chunks)+1}",
+    #             path=self.path,
+    #             type=self.type,
+    #             parent=self.parent,
+    #             start_line=current_start_line,
+    #             end_line=current_start_line + len(current_chunk_lines) - 1,
+    #             content="".join(current_chunk_lines)
+    #         )
+    #         chunks.append(new_chunk)
+
+    #     return chunks
 
 
 class ChunkScorePair(BaseModel):
