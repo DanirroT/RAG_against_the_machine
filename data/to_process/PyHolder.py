@@ -1,6 +1,8 @@
 from pathlib import Path
 from .input import FileHolder, FunctHolder, ClassHolder
 
+a = 1
+
 
 class PyHolder(FileHolder):
     imports: list[str]
@@ -29,3 +31,6 @@ class PyHolder(FileHolder):
             f"\"functs\":\n{'\n\n'.join(map(str, self.functs))}\n\n"
             f"\"classes\":\n{'\n\n\n'.join(map(str, self.classes))}\n"
         )
+
+
+print(a)

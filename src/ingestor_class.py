@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import cast
 import json
 import ast
-from dotenv import load_dotenv
 from markdown_it import MarkdownIt
 from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
                  OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkRaw,
@@ -10,7 +9,7 @@ from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
                  Small_LLM_Model)
 
 
-class IngestorClass():
+class Ingestor():
 
     _llm: Small_LLM_Model
     arg_inputs: InputHolder
@@ -19,8 +18,11 @@ class IngestorClass():
                  arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
+        self.input_dir_path = input_dir_path
+        self.output_dir_path = output_dir_path
 
-        ingest_out: list[FileHolder] = self._load_all_files(input_dir_path)
+        self.ingest_out: list[FileHolder] = (
+            self._load_all_files(self.input_dir_path))
 
         # print("current output\n\n")
 
@@ -38,23 +40,25 @@ class IngestorClass():
         #     with json_path.open("w") as file:
         #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
 
-        self._load_llm(False)
+    def process(self) -> None:
 
-        ingest_out_flattened = self.flatten_file_holders(ingest_out)
+        self._load_llm()
+
+        self.ingest_out_flattened = self.flatten_file_holders(self.ingest_out)
 
         print("flattened output:")
 
-        for output in ingest_out_flattened:
+        for output in self.ingest_out_flattened:
             print("\n\n", output.to_str(self._llm))
 
-        input()
+    def print(self) -> None:
 
         last_path: Path | None = None
 
-        for obj in ingest_out_flattened:
-            current_path = (output_dir_path /
+        for obj in self.ingest_out_flattened:
+            current_path = (self.output_dir_path /
                             Path(obj.path).relative_to(
-                                input_dir_path)).with_suffix(
+                                self.input_dir_path)).with_suffix(
                                     Path(obj.path).suffix + ".json")
 
             # print("path:\t", current_path,
@@ -77,7 +81,6 @@ class IngestorClass():
                 json.dump(obj.to_dict(self._llm), file, indent=4,
                           ensure_ascii=False)
             last_path = current_path
-            # input()
 
         if last_path:
             with last_path.open("a") as file:
@@ -133,6 +136,10 @@ class IngestorClass():
                         file_import.name +
                         ((" as " + file_import.asname)
                             if file_import.asname else ""))
+                if out_file.imports_start == -1:
+                    out_file.imports_start = item.lineno
+                out_file.imports_end = (item.end_lineno if item.end_lineno
+                                        else item.lineno)
 
             if (isinstance(item, ast.ImportFrom)):
 
@@ -142,6 +149,10 @@ class IngestorClass():
                         + file_import.name +
                         ((" as " + file_import.asname)
                          if file_import.asname else ""))
+                if out_file.imports_start == -1:
+                    out_file.imports_start = item.lineno
+                out_file.imports_end = (item.end_lineno if item.end_lineno
+                                        else item.lineno)
 
             if isinstance(item, ast.FunctionDef):
                 # print(item.name, item.args.defaults[0].__dict__
@@ -321,7 +332,7 @@ class IngestorClass():
     def flatten_file_holders(self, file_holders: list[FileHolder]
                              ) -> list[Chunk]:
 
-        flattened_chunks: list[Chunk] = []
+        flattened_chunks: list[ChunkRaw] = []
 
         for file_holder in file_holders:
             if isinstance(file_holder, PyHolder):
@@ -336,7 +347,7 @@ class IngestorClass():
                     flattened_chunks.append(
                         ChunkRaw(
                             id=f"{file_holder.path.stem}.introduction",
-                            path=str(file_holder.path),
+                            path=file_holder.path,
                             type=ChunkType.INTRODUCTION,
                             parent=None,
                             start_line=file_holder.introduction.start_line,
@@ -356,7 +367,7 @@ class IngestorClass():
                         ChunkRaw(
                             id=(f"other.{file_holder.path.stem}."
                                 f"section.{counter}"),
-                            path=str(file_holder.path),
+                            path=file_holder.path,
                             parent=None,
                             type=ChunkType.OTHER,
                             start_line=-1,
@@ -376,11 +387,11 @@ class IngestorClass():
             flattened_chunks.append(
                 ChunkRaw(
                     id=f"{py_holder.path.stem}.imports",
-                    path=str(py_holder.path),
+                    path=py_holder.path,
                     type=ChunkType.IMPORT,
                     parent=None,
-                    start_line=0,
-                    end_line=-1,
+                    start_line=py_holder.imports_start,
+                    end_line=py_holder.imports_end,
                     content="\n".join([imp for imp in py_holder.imports])
                 )
             )
@@ -389,7 +400,7 @@ class IngestorClass():
             flattened_chunks.append(
                 ChunkRaw(
                     id=f"{py_holder.path.stem}.function.{funct.name}",
-                    path=str(py_holder.path),
+                    path=py_holder.path,
                     type=ChunkType.FUNCTION,
                     parent=None,
                     start_line=funct.start_line,
@@ -427,7 +438,7 @@ class IngestorClass():
             flattened_chunks.append(
                 ChunkRaw(
                     id=f"{py_holder.path.stem}.class.{cls.name}",
-                    path=str(py_holder.path),
+                    path=py_holder.path,
                     type=ChunkType.CLASS,
                     parent=str(cls.inherits)[1:-1],
                     start_line=cls.start_line,
@@ -449,7 +460,7 @@ class IngestorClass():
                 ChunkRaw(
                     id=(f"{py_holder.path.stem}.class.{cls.name}"
                         f".method.{method.name}"),
-                    path=str(py_holder.path),
+                    path=py_holder.path,
                     type=ChunkType.METHOD,
                     parent=cls.name,
                     start_line=method.start_line,
@@ -458,8 +469,6 @@ class IngestorClass():
                 )
                 for method in cls.methods
             ]
-
-            input()
 
         return flattened_chunks
 
@@ -472,7 +481,7 @@ class IngestorClass():
             flattened_chunks.append(
                 ChunkRaw(
                     id=f"{path.stem}.section.{section.name}",
-                    path=str(path),
+                    path=path,
                     type=ChunkType.SECTION,
                     parent=None,
                     start_line=section.start_line,
@@ -489,30 +498,47 @@ class IngestorClass():
 
         split_chunks: list[Chunk] = []
 
-        self.arg_inputs.max_context_length = 50
+        self.arg_inputs.max_context_length = 60
+        overlap = 10
+
+        print(f"max_context_length = {self.arg_inputs.max_context_length}")
 
         for chunk in chunks:
             nb_splits = 0
             input("\n\n")
             chuck_header = chunk.to_vector(self._llm, "h")
             chunk_vector = self._llm.encode(chunk.content)
-            whole_vector_len = len(chunk_vector)
+            chunk_header_len = len(chuck_header)
+            vector_len = len(chunk_vector)
+            whole_vector_len = chunk_header_len + vector_len
             if (whole_vector_len > self.arg_inputs.max_context_length):
-                nb_splits = ((whole_vector_len //
-                              (self.arg_inputs.max_context_length -
-                               10 - len(chuck_header))) + 1)
-                split_size = whole_vector_len // nb_splits
-                print(f"({whole_vector_len}) - Splitting {len(chunk.content)} "
+                safe_space = (self.arg_inputs.max_context_length
+                              - 10 - chunk_header_len)
+                nb_splits = ((vector_len // safe_space) + 1)
+                split_size = (vector_len // nb_splits)
+                print("last chunk size",
+                      (vector_len % split_size) + overlap // 2
+                      + split_size + chunk_header_len)
+                if (((vector_len % split_size) + overlap // 2 + split_size)
+                        > safe_space):
+                    split_size = safe_space
+                    nb_splits = (vector_len // split_size +
+                                 (1 if vector_len % nb_splits else 0))
+                    print("last chunk size re",
+                          (vector_len % split_size) + overlap // 2
+                          + split_size + chunk_header_len)
+
+                print(f"({chunk_header_len} + {vector_len}) - Splitting "
                       f"into {nb_splits} sub-chunks of size {split_size}")
                 for i in range(nb_splits):
-                    start = ((i * split_size - 5) if i != 0 else 0)
-                    end = (((i+1) * split_size + 5) if i != nb_splits - 1
-                           else len(chunk.content))
+                    start = ((i * split_size - overlap // 2) if i != 0 else 0)
+                    end = (((i+1) * split_size + overlap // 2) if i != nb_splits - 1
+                           else vector_len)
                     print(f"sub-chunk {i+1}: ",
                           start, "-", end, sep="")
                     new_chunk = Chunk(
                         id=f"{chunk.id}.sub{i}",
-                        path=chunk.path,
+                        path=str(chunk.path),
                         type=chunk.type,
                         parent=chunk.parent,
                         start_line=chunk.start_line,
@@ -523,11 +549,11 @@ class IngestorClass():
                     split_chunks.append(new_chunk)
 
             else:
-                print(f"({whole_vector_len}) - "
-                      f"Not Splitting {len(chunk.content)}")
+                print(f"(({chunk_header_len} + {vector_len})) - "
+                      f"Not Splitting")
                 split_chunks.append(Chunk(
                     id=chunk.id,
-                    path=chunk.path,
+                    path=str(chunk.path),
                     type=chunk.type,
                     parent=chunk.parent,
                     start_line=chunk.start_line,
@@ -536,26 +562,23 @@ class IngestorClass():
                 ))
 
             for sub_chunk in split_chunks[-nb_splits if nb_splits else -1:]:
-                print(len(sub_chunk.content_vector))
-                print(self._llm.decode(sub_chunk.content_vector), "\n\n")
+                print("final len:", len(sub_chunk.content_vector))
+                print("final out:", self._llm.decode(
+                    sub_chunk.content_vector), "\n", sep="\n")
+                if (len(sub_chunk.content_vector) >
+                        self.arg_inputs.max_context_length):
+                    raise ValueError(f"Chunk {sub_chunk.id} is too long")
 
         return split_chunks
 
-    def _load_llm(self, mode: bool = True) -> None:
+    def _load_llm(self) -> None:
 
-        self.llm_files = {}
-        print()
+        # self._llm = Small_LLM_Model(False)
+        self._llm = Small_LLM_Model(False, device="cpu")
 
-        load_dotenv()
-        # self._llm = Small_LLM_Model(mode)
-        self._llm = Small_LLM_Model(mode, device="cpu")
+        self.llm_files = self._llm.get_path_to_model_files()
 
-        self.llm_files["vocab"] = self._llm.get_path_to_vocab_file()
-        self.llm_files["merges"] = self._llm.get_path_to_merges_file()
-        self.llm_files["tokenizer"] = (
-            self._llm.get_path_to_tokenizer_file())
-
-        with open(self.llm_files["vocab"]) as vocab_file:
+        with self.llm_files["vocab"].open() as vocab_file:
             self.vocab_text_int: dict[str, int] = json.load(vocab_file)
 
         self.vocab_int_text = {}

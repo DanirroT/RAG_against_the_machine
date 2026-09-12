@@ -1,13 +1,12 @@
-# ABOUTME: LLM SDK for local model inference using Hugging Face transformers.
-# ABOUTME: Provides Small_LLM_Model class for loading and running causal language models.
-
+from dotenv import load_dotenv
+from pathlib import Path
 import torch
 from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          PreTrainedTokenizer, PreTrainedModel, logging)
+                          PreTrainedTokenizer, PreTrainedModel)
 from huggingface_hub import hf_hub_download
 
 
-logging.set_verbosity_error()  # keep the console clean
+# logging.set_verbosity_error()  # keep the console clean
 
 
 class Small_LLM_Model:
@@ -46,6 +45,8 @@ class Small_LLM_Model:
     ) -> None:
 
         self._model_name = model_name
+
+        load_dotenv()
 
         # Auto-select device with priority: mps > cuda > cpu
         if device is None:
@@ -124,29 +125,27 @@ class Small_LLM_Model:
         logits = out.logits[0, -1].tolist()
         return [float(x) for x in logits]
 
-    def get_path_to_vocab_file(self) -> str:
+    def get_path_to_model_files(self) -> dict[str, Path]:
         vocab_file_name = self._tokenizer.vocab_files_names.get(
             'vocab_file', "vocab.json")
         vocab_path = hf_hub_download(
             repo_id=self._model_name,
             filename=vocab_file_name
         )
-        return vocab_path
 
-    def get_path_to_merges_file(self) -> str:
         merges_file_name = self._tokenizer.vocab_files_names.get(
             'merges_file', "merges.txt")
         merges_path = hf_hub_download(
             repo_id=self._model_name,
             filename=merges_file_name
         )
-        return merges_path
 
-    def get_path_to_tokenizer_file(self) -> str:
         tokenizer_file_name = self._tokenizer.vocab_files_names.get(
             'tokenizer_file', "tokenizer.json")
         tokenizer_path = hf_hub_download(
             repo_id=self._model_name,
             filename=tokenizer_file_name
         )
-        return tokenizer_path
+        return {"vocab": Path(vocab_path),
+                "merges": Path(merges_path),
+                "tokenizer": Path(tokenizer_path)}

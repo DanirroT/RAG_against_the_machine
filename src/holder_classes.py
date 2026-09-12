@@ -192,15 +192,27 @@ class ClassHolder(SectionHolder):
 
 class PyHolder(FileHolder):
     imports: list[str]
+    imports_start: int
+    imports_end: int
     functs: list[FunctHolder]
     classes: list[ClassHolder]
+    start_line: int
+    end_line: int
 
     def __init__(self, path: Path,
+                 start_line: int | None = None,
+                 end_line: int | None = None,
                  imports: list[str] | None = None,
+                 imports_start: int | None = None,
+                 imports_end: int | None = None,
                  functs: list[FunctHolder] | None = None,
                  classes: list[ClassHolder] | None = None) -> None:
         super().__init__(path)
+        self.start_line = start_line if start_line is not None else -1
+        self.end_line = end_line if end_line is not None else -1
         self.imports = imports if imports is not None else []
+        self.imports_start = imports_start if imports_start is not None else -1
+        self.imports_end = imports_end if imports_end is not None else -1
         self.functs = functs if functs is not None else []
         self.classes = classes if classes is not None else []
 
@@ -356,7 +368,6 @@ class ChunkRaw(BaseModel):
     start_line: int
     end_line: int
     content: str
-    # content_vector: list[int]
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "ChunkRaw":
@@ -366,7 +377,19 @@ class ChunkRaw(BaseModel):
 
         return (self)
 
-    def to_dict(self, llm: Small_LLM_Model) -> dict[str, Any]:
+    def __str__(self) -> str:
+
+        return (
+            f"\"id\": {self.id},\n"
+            f"\"path\": {str(self.path)},\n"
+            f"\"type\": {str(self.type)},\n"
+            f"\"parent\": {self.parent}\n,"
+            f"\"start_line\": {self.start_line}, - "
+            f"\"end_line\": {self.end_line},\n"
+            f"\"content\":\n{self.content}"
+        )
+
+    def to_dict(self) -> dict[str, Any]:
 
         return {
             "id": self.id,
@@ -375,19 +398,20 @@ class ChunkRaw(BaseModel):
             "parent": self.parent,
             "start_line": self.start_line,
             "end_line": self.end_line,
-            "content": llm.decode(self.content_vector),
-            "vector": self.content_vector
+            "content": self.content,
         }
 
     def to_vector(self, llm: Small_LLM_Model, mode: str = "c"
                   ) -> list[int]:
         if mode == "h":
-            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+            return llm.encode(f"id: {self.id}\n"
+                              f"path: {self.path}\nparent: {self.parent}\n"
                               f"start_line: {self.start_line} "
                               f"end_line: {self.end_line}\n"
                               "content:\n")
         if mode == "a":
-            return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
+            return llm.encode(f"id: {self.id}\n"
+                              f"path: {self.path}\nparent: {self.parent}\n"
                               f"start_line: {self.start_line} "
                               f"end_line: {self.end_line}\n"
                               f"content:\n{self.content}")
@@ -398,53 +422,10 @@ class ChunkRaw(BaseModel):
                              "'ChunkRaw.to_vector()'. Must be one of: "
                              "'C' 'h' 'a'")
 
-    # def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
-    #                 ) -> list["Chunk"]:
-    #     if len(self.to_vector(llm)) <= max_chunk_size:
-    #         return [self]
-
-    #     content_lines = self.content.splitlines(keepends=True)
-    #     chunks: list[Chunk] = []
-    #     current_chunk_lines: list[str] = []
-    #     current_start_line = self.start_line
-
-    #     for i, line in enumerate(content_lines):
-    #         current_chunk_lines.append(line)
-    #         if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
-    #             # Create a new chunk with the accumulated lines
-    #             new_chunk = Chunk(
-    #                 id=f"{self.id}_part{len(chunks)+1}",
-    #                 path=self.path,
-    #                 type=self.type,
-    #                 parent=self.parent,
-    #                 start_line=current_start_line,
-    #                 end_line=current_start_line + len(current_chunk_lines) - 1,
-    #                 content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
-    #             )
-    #             chunks.append(new_chunk)
-    #             # Reset for the next chunk
-    #             current_chunk_lines = [line]  # Start with the overflowing line
-    #             current_start_line += len(current_chunk_lines) - 1
-
-    #     # Add the last chunk if there are remaining lines
-    #     if current_chunk_lines:
-    #         new_chunk = Chunk(
-    #             id=f"{self.id}_part{len(chunks)+1}",
-    #             path=self.path,
-    #             type=self.type,
-    #             parent=self.parent,
-    #             start_line=current_start_line,
-    #             end_line=current_start_line + len(current_chunk_lines) - 1,
-    #             content="".join(current_chunk_lines)
-    #         )
-    #         chunks.append(new_chunk)
-
-    #     return chunks
-
 
 class Chunk(BaseModel):
     id: str
-    path: Path
+    path: str
     type: ChunkType
     parent: str | None
     start_line: int
@@ -474,15 +455,16 @@ class Chunk(BaseModel):
 
     def to_str(self, llm: Small_LLM_Model) -> str:
 
-        return f"""
-"id": {self.id},
-"path": {str(self.path)},
-"type": {str(self.type)},
-"parent": {self.parent},
-"start_line": {self.start_line},
-"end_line": {self.end_line},
-"content": {llm.decode(self.content_vector)},
-        """
+        return (
+            f"\"id\": {self.id},\n"
+            f"\"path\": {str(self.path)},\n"
+            f"\"type\": {str(self.type)},\n"
+            f"\"parent\": {self.parent}\n,"
+            f"\"start_line\": {self.start_line}, "
+            f"\"end_line\": {self.end_line},\n"
+            f"\"content\":\n{llm.decode(self.content_vector)}"
+        )
+
         # "vector": self.content_vector
 
     # def to_vector(self, llm: Small_LLM_Model, whole: bool = False
@@ -506,7 +488,8 @@ class Chunk(BaseModel):
 
     #     for i, line in enumerate(content_lines):
     #         current_chunk_lines.append(line)
-    #         if len(llm.encode("".join(current_chunk_lines))) > max_chunk_size:
+    #         if len(llm.encode("".join(current_chunk_lines))) >
+    # max_chunk_size:
     #             # Create a new chunk with the accumulated lines
     #             new_chunk = Chunk(
     #                 id=f"{self.id}_part{len(chunks)+1}",
@@ -514,12 +497,15 @@ class Chunk(BaseModel):
     #                 type=self.type,
     #                 parent=self.parent,
     #                 start_line=current_start_line,
-    #                 end_line=current_start_line + len(current_chunk_lines) - 1,
-    #                 content="".join(current_chunk_lines[:-1])  # Exclude the last line that caused overflow
+    #                 end_line=current_start_line + len(current_chunk_lines)
+    # - 1,
+    #                 content="".join(current_chunk_lines[:-1])  # Exclude the
+    # last line that caused overflow
     #             )
     #             chunks.append(new_chunk)
     #             # Reset for the next chunk
-    #             current_chunk_lines = [line]  # Start with the overflowing line
+    #             current_chunk_lines = [line]  # Start with the overflowing
+    # line
     #             current_start_line += len(current_chunk_lines) - 1
 
     #     # Add the last chunk if there are remaining lines

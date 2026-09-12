@@ -6,8 +6,6 @@ from src import (RAGCodeBaseLLM, InputHolder)
 
 def main(args: list[str]) -> None:
 
-    mode = False
-
     # try:
     #     arg_inputs = val_args(args)
     # except ValidationError as e:
@@ -33,7 +31,8 @@ def main(args: list[str]) -> None:
     )
 
     try:
-        RAGCodeBaseLLM(arg_inputs, mode)
+        RAGCodeBaseLLM(arg_inputs, False)
+        # RAGCodeBaseLLM(arg_inputs)
 
     except (IsADirectoryError, FileExistsError):
         return

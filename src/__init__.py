@@ -5,7 +5,7 @@ from .holder_classes import (InputHolder, DefFunctException,
                              Chunk, ChunkRaw, ChunkScorePair, ChunkType)
 from .input import (val_args, get_from_json_file,
                     ft_repr, error_processing, create_dir, create_file)
-from .ingestor_class import IngestorClass
+from .ingestor_class import Ingestor
 from .RAG_code_base_LLM import RAGCodeBaseLLM
 # from src.validation_error_handling import error_processing
 print('\a', end="")
@@ -18,5 +18,5 @@ __all__: list[str] = [
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",
     "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException",
     "Chunk", "ChunkRaw", "ChunkScorePair", "ChunkType",
-    "IngestorClass"
+    "Ingestor"
 ]

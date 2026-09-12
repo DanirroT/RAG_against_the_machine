@@ -6,23 +6,11 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/08/25 20:48:37 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/09/12 20:49:47 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 NAME = RAG_against_the_machine
-
-## DEPENDENCIES = pydantic mypy flake8 protobuf accelerate dotenv
-
-# DEPENDENCIES = pydantic mypy flake8 fire httpcore tqdm
-
-# Extra?? - protobuf, accelerate
-
-# /etc/resolv.conf
-
-# nameserver 8.8.8.8
-# nameserver 1.1.1.1
-
 
 # figure out what is " Your system must provide a Command-Line Interface (CLI) using Python Fire"
 
