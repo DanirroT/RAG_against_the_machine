@@ -22,9 +22,32 @@ class InputHolder(BaseModel):
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "InputHolder":
-        if self.mode == "answer" and not self.question:
-            raise ValueError(f"When calling the '{self.mode}' mode, a question"
-                             " must be provided as the second argument.")
+        if self.mode == "index" and not self.max_chunk_size:
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " max_chunk_size must be provided.")
+        if self.mode == "search" and not self.k:
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " k must be provided.")
+        if (self.mode == "search_dataset" and
+                (not self.save_directory or not self.dataset_path)):
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " save_directory and dataset_path"
+                             " must be provided.")
+        if self.mode == "answer" and not self.k:
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " k must be provided.")
+        if (self.mode == "answer_dataset" and
+                (not self.student_search_results_path
+                 or not self.save_directory)):
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " student_search_results_path and save_directory"
+                             " must be provided.")
+        if (self.mode == "evaluate" and
+                (not self.student_search_results_path
+                 or not self.dataset_path)):
+            raise ValueError(f"When calling the '{self.mode}' mode, option"
+                             " student_search_results_path and dataset_path"
+                             " must be provided.")
 
         try:
             with open(self.dataset_path):
@@ -361,13 +384,13 @@ class ChunkType(Enum):
 
 
 class ChunkRaw(BaseModel):
-    id: str
+    id: str = Field(min_length=1)
     path: Path
     type: ChunkType
-    parent: str | None
-    start_line: int
-    end_line: int
-    content: str
+    parent: str | None = Field(default=None)
+    start_line: int = Field(gt=0)
+    end_line: int = Field(gt=0)
+    content: str = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "ChunkRaw":
@@ -383,7 +406,7 @@ class ChunkRaw(BaseModel):
             f"\"id\": {self.id},\n"
             f"\"path\": {str(self.path)},\n"
             f"\"type\": {str(self.type)},\n"
-            f"\"parent\": {self.parent}\n,"
+            f"\"parent\": {self.parent},\n"
             f"\"start_line\": {self.start_line}, - "
             f"\"end_line\": {self.end_line},\n"
             f"\"content\":\n{self.content}"
@@ -424,13 +447,14 @@ class ChunkRaw(BaseModel):
 
 
 class Chunk(BaseModel):
-    id: str
-    path: str
+    id: str = Field(min_length=1)
+    path: str = Field(min_length=1)
     type: ChunkType
-    parent: str | None
-    start_line: int
-    end_line: int
-    content_vector: list[int]
+    parent: str | None = Field(default=None)
+    start_line: int = Field(gt=0)
+    end_line: int = Field(gt=0)
+    content: str = Field(min_length=1)
+    content_vector: list[int] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_inputs(self) -> "Chunk":
@@ -440,7 +464,7 @@ class Chunk(BaseModel):
 
         return (self)
 
-    def to_dict(self, llm: Small_LLM_Model) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
 
         return {
             "id": self.id,
@@ -449,82 +473,39 @@ class Chunk(BaseModel):
             "parent": self.parent,
             "start_line": self.start_line,
             "end_line": self.end_line,
-            "content": llm.decode(self.content_vector),
+            "content": self.content,
             "vector": self.content_vector
         }
 
-    def to_str(self, llm: Small_LLM_Model) -> str:
+    def __str__(self) -> str:
 
         return (
             f"\"id\": {self.id},\n"
             f"\"path\": {str(self.path)},\n"
             f"\"type\": {str(self.type)},\n"
-            f"\"parent\": {self.parent}\n,"
+            f"\"parent\": {self.parent},\n"
             f"\"start_line\": {self.start_line}, "
             f"\"end_line\": {self.end_line},\n"
-            f"\"content\":\n{llm.decode(self.content_vector)}"
+            f"\"content\":\n{self.content}"
         )
 
         # "vector": self.content_vector
 
-    # def to_vector(self, llm: Small_LLM_Model, whole: bool = False
-    #               ) -> list[int]:
-    #     if whole:
-    #         return llm.encode(f"path: {self.path}\nparent: {self.parent}\n"
-    #                           f"start_line: {self.start_line} "
-    #                           f"end_line: {self.end_line}"
-    #                           f"content:\n{self.content}")
-    #     return llm.encode(self.content)
-
-    # def split_chunk(self, max_chunk_size: int, llm: Small_LLM_Model
-    #                 ) -> list["Chunk"]:
-    #     if len(self.to_vector(llm)) <= max_chunk_size:
-    #         return [self]
-
-    #     content_lines = self.content.splitlines(keepends=True)
-    #     chunks: list[Chunk] = []
-    #     current_chunk_lines: list[str] = []
-    #     current_start_line = self.start_line
-
-    #     for i, line in enumerate(content_lines):
-    #         current_chunk_lines.append(line)
-    #         if len(llm.encode("".join(current_chunk_lines))) >
-    # max_chunk_size:
-    #             # Create a new chunk with the accumulated lines
-    #             new_chunk = Chunk(
-    #                 id=f"{self.id}_part{len(chunks)+1}",
-    #                 path=self.path,
-    #                 type=self.type,
-    #                 parent=self.parent,
-    #                 start_line=current_start_line,
-    #                 end_line=current_start_line + len(current_chunk_lines)
-    # - 1,
-    #                 content="".join(current_chunk_lines[:-1])  # Exclude the
-    # last line that caused overflow
-    #             )
-    #             chunks.append(new_chunk)
-    #             # Reset for the next chunk
-    #             current_chunk_lines = [line]  # Start with the overflowing
-    # line
-    #             current_start_line += len(current_chunk_lines) - 1
-
-    #     # Add the last chunk if there are remaining lines
-    #     if current_chunk_lines:
-    #         new_chunk = Chunk(
-    #             id=f"{self.id}_part{len(chunks)+1}",
-    #             path=self.path,
-    #             type=self.type,
-    #             parent=self.parent,
-    #             start_line=current_start_line,
-    #             end_line=current_start_line + len(current_chunk_lines) - 1,
-    #             content="".join(current_chunk_lines)
-    #         )
-    #         chunks.append(new_chunk)
-
-    #     return chunks
-
 
 class ChunkScorePair(BaseModel):
-    id: str
+    id: str = Field(min_length=1)
     chunk: Chunk
-    score: float
+    score: float = Field(ge=0)
+
+    def __str__(self) -> str:
+
+        return (
+            f"\"id\": {self.id},\n"
+            f"\"path\": {str(self.chunk.path)},\n"
+            f"\"type\": {str(self.chunk.type)},\n"
+            f"\"parent\": {self.chunk.parent},\n"
+            f"\"start_line\": {self.chunk.start_line}, "
+            f"\"end_line\": {self.chunk.end_line},\n"
+            f"\"content\":\n{self.chunk.content}" +
+            (f"score: {self.score}" if self.score else "")
+        )

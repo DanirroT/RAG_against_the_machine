@@ -14,6 +14,11 @@ class Ingestor():
     _llm: Small_LLM_Model
     arg_inputs: InputHolder
 
+    llm_files: dict[str, Path]
+
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
+
     def __init__(self, input_dir_path: Path, output_dir_path: Path,
                  arg_inputs: InputHolder) -> None:
 
@@ -28,19 +33,7 @@ class Ingestor():
 
         # print("\n".join(map(str, ingest_out)))
 
-        # print("output:", output_dir_path)
-
-        # input("starting creation")
-        # for obj in ingest_out:
-        #     json_path = (output_dir_path /
-        #                  obj.path.relative_to(input_dir_path))
-        #     json_path = json_path.with_suffix(json_path.suffix + ".json")
-        #     json_path.parent.mkdir(parents=True, exist_ok=True)
-        #     print("folder created")
-        #     with json_path.open("w") as file:
-        #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
-
-    def process(self) -> None:
+        # def process(self) -> None:
 
         self._load_llm()
 
@@ -49,9 +42,9 @@ class Ingestor():
         print("flattened output:")
 
         for output in self.ingest_out_flattened:
-            print("\n\n", output.to_str(self._llm))
+            print("\n\n", output)
 
-    def print(self) -> None:
+        # def print(self) -> None:
 
         last_path: Path | None = None
 
@@ -69,7 +62,7 @@ class Ingestor():
                 #       str(current_path) != str(last_path))
                 current_path.parent.mkdir(parents=True, exist_ok=True)
                 if last_path:
-                    with last_path.open("a") as file:
+                    with last_path.open("a") as file:  # pyright: ignore
                         file.write("\n]\n")
                 with current_path.open("x") as file:
                     file.write("[\n")
@@ -78,7 +71,7 @@ class Ingestor():
                 with current_path.open("a") as file:
                     file.write(",\n")
             with current_path.open("a") as file:
-                json.dump(obj.to_dict(self._llm), file, indent=4,
+                json.dump(obj.to_dict(), file, indent=4,
                           ensure_ascii=False)
             last_path = current_path
 
@@ -498,13 +491,76 @@ class Ingestor():
 
         split_chunks: list[Chunk] = []
 
-        self.arg_inputs.max_context_length = 60
-        overlap = 10
+        # self.arg_inputs.max_context_length = 60
+        overlap = 5
 
         print(f"max_context_length = {self.arg_inputs.max_context_length}")
 
         for chunk in chunks:
-            nb_splits = 0
+            chuck_header = chunk.to_vector(self._llm, "h")
+            # print("---", self._llm.decode(chuck_header), "---", sep="\n")
+            chunk_vector = chunk.to_vector(self._llm, "c")
+            # print()
+            # print("---", self._llm.decode(chunk_vector), "---", sep="\n")
+            # input()
+            chunk_header_len = len(chuck_header)
+            vector_len = len(chunk_vector)
+            whole_vector_len = chunk_header_len + vector_len
+            i = 1
+            if (whole_vector_len > self.arg_inputs.max_context_length):
+                max_content_size = (self.arg_inputs.max_context_length
+                                    - overlap - chunk_header_len)
+
+                print(f"({chunk_header_len} + {vector_len}) - Splitting "
+                      f"into sub-chunks of size {max_content_size}")
+                start = 0
+                end = 0
+                while end != vector_len:
+                    end = min(start + max_content_size, vector_len)
+                    print(f"sub-chunk {i}: ",
+                          start, "-", end, sep="")
+                    i += 1
+                    new_chunk = Chunk(
+                        id=f"{chunk.id}.sub{i}",
+                        path=str(chunk.path),
+                        type=chunk.type,
+                        parent=chunk.parent,
+                        start_line=chunk.start_line,
+                        end_line=chunk.end_line,
+                        content=self._llm.decode(chunk_vector[start:end]),
+                        content_vector=(chuck_header +
+                                        chunk_vector[start:end])
+                    )
+                    split_chunks.append(new_chunk)
+                    start = end - overlap
+            else:
+                print(f"(({chunk_header_len} + {vector_len})) - "
+                      f"Not Splitting")
+                split_chunks.append(Chunk(
+                    id=chunk.id,
+                    path=str(chunk.path),
+                    type=chunk.type,
+                    parent=chunk.parent,
+                    start_line=chunk.start_line,
+                    end_line=chunk.end_line,
+                    content=self._llm.decode(chunk_vector),
+                    content_vector=(chuck_header + chunk_vector)
+                ))
+
+            for sub_chunk in split_chunks[-i:]:
+                print("final len:", len(sub_chunk.content_vector))
+                print("final out:", self._llm.decode(
+                    sub_chunk.content_vector), "\n", sep="\n")
+                if (len(sub_chunk.content_vector) >
+                        self.arg_inputs.max_context_length):
+                    raise ValueError(f"Chunk {sub_chunk.id} is too long")
+
+            print("\n\n")
+
+        return split_chunks
+        """
+        for chunk in chunks:
+            nb_splits = 1
             input("\n\n")
             chuck_header = chunk.to_vector(self._llm, "h")
             chunk_vector = self._llm.encode(chunk.content)
@@ -532,8 +588,8 @@ class Ingestor():
                       f"into {nb_splits} sub-chunks of size {split_size}")
                 for i in range(nb_splits):
                     start = ((i * split_size - overlap // 2) if i != 0 else 0)
-                    end = (((i+1) * split_size + overlap // 2) if i != nb_splits - 1
-                           else vector_len)
+                    end = (((i+1) * split_size + overlap // 2)
+                           if i != nb_splits - 1 else vector_len)
                     print(f"sub-chunk {i+1}: ",
                           start, "-", end, sep="")
                     new_chunk = Chunk(
@@ -547,29 +603,7 @@ class Ingestor():
                                         chunk_vector[start:end])
                     )
                     split_chunks.append(new_chunk)
-
-            else:
-                print(f"(({chunk_header_len} + {vector_len})) - "
-                      f"Not Splitting")
-                split_chunks.append(Chunk(
-                    id=chunk.id,
-                    path=str(chunk.path),
-                    type=chunk.type,
-                    parent=chunk.parent,
-                    start_line=chunk.start_line,
-                    end_line=chunk.end_line,
-                    content_vector=(chuck_header + chunk_vector)
-                ))
-
-            for sub_chunk in split_chunks[-nb_splits if nb_splits else -1:]:
-                print("final len:", len(sub_chunk.content_vector))
-                print("final out:", self._llm.decode(
-                    sub_chunk.content_vector), "\n", sep="\n")
-                if (len(sub_chunk.content_vector) >
-                        self.arg_inputs.max_context_length):
-                    raise ValueError(f"Chunk {sub_chunk.id} is too long")
-
-        return split_chunks
+        """
 
     def _load_llm(self) -> None:
 

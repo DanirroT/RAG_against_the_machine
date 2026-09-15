@@ -16,7 +16,12 @@ def main(args: list[str]) -> None:
     #     return
 
     arg_inputs: InputHolder = InputHolder(
-        mode="index",
+        # mode="index",
+        mode="search",
+        # mode="search_dataset",
+        # mode="answer",
+        # mode="answer_dataset",
+        # mode="evaluate",
         max_chunk_size=2000,
         dataset_path=("data/datasets/UnansweredQuestions/"
                       "dataset_docs_public.json"),
@@ -27,7 +32,7 @@ def main(args: list[str]) -> None:
         max_context_length=2000,
         student_search_results_path=("data/output/search_results/"
                                      "dataset_docs_public.json"),
-        question=""
+        question="what are the Imports for inputs"
     )
 
     try:

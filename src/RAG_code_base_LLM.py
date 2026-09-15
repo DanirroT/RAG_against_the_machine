@@ -1,15 +1,13 @@
-import sys
 from pathlib import Path
 from shutil import rmtree
-from typing import Any, cast
-import json
+from typing import Any
 from src import (get_from_json_file, create_file, create_dir,
                  InputHolder,
-                 Ingestor, Small_LLM_Model,
+                 Ingestor, StrSearcher
                  #  ChunkType, Chunk, ChunkRaw, ChunkScorePair
-                 #  DefFunctException
+                 #  DefFunctException, Small_LLM_Model
                  )
-from .placeholders import (StrAnswerer, FileAnswerer, StrSearcher,
+from .placeholders import (StrAnswerer, FileAnswerer,
                            FileSearcher, Evaluator)
 
 
@@ -25,48 +23,27 @@ class RAGCodeBaseLLM():
     student_answer_path: Path
     student_search_results_path: Path
 
-    # raw_prompts: list[str]
-    # funct_defs: list[FunctDef]
-
     llm_files: dict[str, str]
 
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
-
-    # tokenized_int_funct_list: list[list[int]]
-    # instructions: list[int]
-    # universal_start: list[int]
-    # universal_post_prompt: list[int]
-
-    # to_export: (str |
-    #             dict[str, str | dict[str, Any]] |
-    #             list[str | dict[str, str | dict[str, Any]]])
-
-    # mode: str = Field()
-    # max_chunk_size: int = Field(gt=0)
-    # dataset_path: str = Field(min_length=1)
-    # k: float = Field(gt=0, lt=1)
-    # save_directory: str = Field(min_length=1)
-    # student_answer_path: str = Field(min_length=1)
-    # max_context_length: int = Field(gt=0)
-    # student_search_results_path: str = Field(min_length=1)
-    # question: str = Field()
 
     def __init__(self, arg_inputs: InputHolder, mode: bool = True) -> None:
 
         force = True
 
         if arg_inputs:
-            print("arg_inputs Exists")
+            # print("arg_inputs Exists")
 
-            self.save_directory = create_dir(
-                arg_inputs.save_directory, force)
-            print(f"{self.save_directory} Created")
+            if arg_inputs.mode in ["search_dataset", "answer_dataset"]:
+                self.save_directory = create_dir(
+                    arg_inputs.save_directory, force)
+                print(f"{self.save_directory} Created")
 
-            if arg_inputs.mode == "answer":
-                self.student_answer_path = create_file(
-                    arg_inputs.student_answer_path, force)
-                print(f"{self.student_answer_path} Created")
+            # if arg_inputs.mode == "answer":
+            #     self.student_answer_path = create_file(
+            #         arg_inputs.student_answer_path, force)
+            #     print(f"{self.student_answer_path} Created")
 
             if arg_inputs.mode == "search":
                 self.student_search_results_path = create_file(
@@ -90,28 +67,32 @@ class RAGCodeBaseLLM():
             print(f"Ingestion complete! Indices saved under {output_dir_str}")
             return
 
-        elif self.arg_inputs.mode == "answer":
-            input_dir_str = "data/processed/"
-            output_dir_str = "data/answer/"
-            self._str_answer(input_dir_str, output_dir_str)
-
-        elif self.arg_inputs.mode == "answer_dataset":
-            input_dir_str = "data/processed/"
-            output_dir_str = "data/answers/"
-            self._file_answer(input_dir_str, output_dir_str)
-
         elif self.arg_inputs.mode == "search":
             input_dir_str = "data/processed/"
-            output_dir_str = "data/result/"
+            output_file_str = "data/search/search.txt"
             lookup = ""
             self._str_search(lookup,
-                             input_dir_str, output_dir_str)
+                             input_dir_str, output_file_str)
+            print(f"Search Finished! Check in {output_file_str}")
 
         elif self.arg_inputs.mode == "search_dataset":
             input_dir_str = "data/processed/"
-            output_dir_str = "data/results/"
+            output_file_str = "data/search/StudentSearchResults.json"
             lookup = ""
-            self._file_search(lookup, input_dir_str, output_dir_str)
+            self._file_search(lookup, input_dir_str, output_file_str)
+            print(f"Search Finished! Check in {output_file_str}")
+
+        elif self.arg_inputs.mode == "answer":
+            input_dir_str = "data/processed/"
+            output_file_str = "data/answer/answer.txt"
+            self._str_answer(input_dir_str, output_file_str)
+            print(f"Answer Provided! Check in {output_file_str}")
+
+        elif self.arg_inputs.mode == "answer_dataset":
+            input_dir_str = "data/processed/"
+            output_file_str = "data/answer/StudentSearchResultsAndAnswer.json"
+            self._file_answer(input_dir_str, output_file_str)
+            print(f"Answer Provided! Check in {output_file_str}")
 
         elif self.arg_inputs.mode == "evaluate":
             code_questions_str = ("data/datasets/UnansweredQuestions/"
@@ -127,6 +108,7 @@ class RAGCodeBaseLLM():
             self._evaluate(code_questions_str, docs_questions_str,
                            code_answers_str, docs_answers_str,
                            output_dir_str)
+            print(f"Evaluation Finished! Check in {output_dir_str}")
 
         # try:
         #     self._load_llm(mode)
@@ -186,48 +168,15 @@ class RAGCodeBaseLLM():
 
         print("input:", input_dir_path)
 
-        ingestor = Ingestor(input_dir_path, output_dir_path, self.arg_inputs)
-        ingestor.process()
-        input()
-        ingestor.print()
-
-    def _str_answer(self, input_dir_str: str, output_dir_str: str) -> None:
-
-        pass
-
-        input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
-        if output_dir_path.exists():
-            if output_dir_path.is_file():
-                output_dir_path.unlink()
-            else:
-                rmtree(output_dir_path)
-        output_dir_path.mkdir(parents=True)
-        query = self.arg_inputs.question
-
-        StrAnswerer(query, input_dir_path, output_dir_path, Path("data/processed/"), self.arg_inputs)
-
-    def _file_answer(self, input_dir_str: str, output_dir_str: str) -> None:
-
-        pass
-
-        input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
-        if output_dir_path.exists():
-            if output_dir_path.is_file():
-                output_dir_path.unlink()
-            else:
-                rmtree(output_dir_path)
-        output_dir_path.mkdir(parents=True)
-        query = self.arg_inputs.question
-
-        FileAnswerer(query, input_dir_path, output_dir_path, Path("data/processed/"), self.arg_inputs)
+        Ingestor(input_dir_path, output_dir_path, self.arg_inputs)
+        # ingestor = Ingestor(input_dir_path, output_dir_path, self.arg_inputs)
+        # ingestor.process()
+        # input()
+        # ingestor.print()
 
     def _str_search(self, lookup: str,
                     input_dir_str: str, output_dir_str: str) -> None:
 
-        pass
-
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_dir_str)
         if output_dir_path.exists():
@@ -238,7 +187,8 @@ class RAGCodeBaseLLM():
         output_dir_path.mkdir(parents=True)
         query = self.arg_inputs.question
 
-        StrSearcher(query, input_dir_path, output_dir_path, Path("data/processed/"), self.arg_inputs)
+        StrSearcher(query, input_dir_path, output_dir_path,
+                    Path("data/processed/"), self.arg_inputs)
 
     def _file_search(self, lookup: str,
                      input_dir_str: str, output_dir_str: str) -> None:
@@ -254,7 +204,42 @@ class RAGCodeBaseLLM():
                 rmtree(output_dir_path)
         output_dir_path.mkdir(parents=True)
         query = self.arg_inputs.question
-        FileSearcher(query, input_dir_path, output_dir_path, Path("data/processed/"), self.arg_inputs)
+        FileSearcher(query, input_dir_path, output_dir_path,
+                     Path("data/processed/"), self.arg_inputs)
+
+    def _str_answer(self, input_dir_str: str, output_dir_str: str) -> None:
+
+        pass
+
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
+            else:
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
+
+        StrAnswerer(query, input_dir_path, output_dir_path,
+                    Path("data/processed/"), self.arg_inputs)
+
+    def _file_answer(self, input_dir_str: str, output_dir_str: str) -> None:
+
+        pass
+
+        input_dir_path = Path(input_dir_str)
+        output_dir_path = Path(output_dir_str)
+        if output_dir_path.exists():
+            if output_dir_path.is_file():
+                output_dir_path.unlink()
+            else:
+                rmtree(output_dir_path)
+        output_dir_path.mkdir(parents=True)
+        query = self.arg_inputs.question
+
+        FileAnswerer(query, input_dir_path, output_dir_path,
+                     Path("data/processed/"), self.arg_inputs)
 
     def _evaluate(self, code_questions_str: str, docs_questions_str: str,
                   code_answers_str: str, docs_answers_str: str,
@@ -276,7 +261,8 @@ class RAGCodeBaseLLM():
         output_dir_path.mkdir(parents=True)
         pass
         Evaluator(code_questions_file, docs_questions_file, code_answers_file,
-                  docs_answers_file, output_dir_path, Path("data/processed/"), self.arg_inputs)
+                  docs_answers_file, output_dir_path,
+                  Path("data/processed/"), self.arg_inputs)
 
     # def _load_llm(self, mode: bool = True) -> None:
 

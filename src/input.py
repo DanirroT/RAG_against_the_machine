@@ -152,7 +152,7 @@ def val_args() -> InputHolder:
 #     return InputHolder(**inputs)  # pyright: ignore
 
 
-def get_from_json_file(file_path: str) -> Any:
+def get_from_json_file(file_path: str | Path) -> Any:
 
     with open(file_path) as file_obj:
         output = json.load(file_obj)

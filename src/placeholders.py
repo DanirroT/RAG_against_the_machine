@@ -6,11 +6,16 @@ from src import (InputHolder, Chunk,
                  Small_LLM_Model)
 
 
-class StrAnswerer():
+class FileSearcher():
 
     _llm: Small_LLM_Model
     database: list[Chunk]
     arg_inputs: InputHolder
+
+    llm_files: dict[str, Path]
+
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
 
     def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
                  database_path: Path, arg_inputs: InputHolder) -> None:
@@ -36,7 +41,64 @@ class StrAnswerer():
     #         add_chunks: list[Chunk] = []
     #         for chunk in new_file:
     #             print(chunk)
-    #             add_chunks.append[Chunk(**chunk)]
+    #             add_chunks.append(Chunk(**chunk))
+
+    #         database_ingest_out += add_chunks
+
+    #     return database_ingest_out
+
+    def _load_llm(self) -> None:
+
+        # self._llm = Small_LLM_Model()
+        self._llm = Small_LLM_Model(device="cpu")
+
+        self.llm_files = self._llm.get_path_to_model_files()
+
+        with self.llm_files["vocab"].open() as vocab_file:
+            self.vocab_text_int: dict[str, int] = json.load(vocab_file)
+
+        self.vocab_int_text = {}
+
+        for k, v in self.vocab_text_int.items():
+            self.vocab_int_text[v] = k
+
+
+class StrAnswerer():
+
+    _llm: Small_LLM_Model
+    database: list[Chunk]
+    arg_inputs: InputHolder
+
+    llm_files: dict[str, Path]
+
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
+
+    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
+                 database_path: Path, arg_inputs: InputHolder) -> None:
+
+        self.arg_inputs = arg_inputs
+        self.input_dir_path = input_dir_path
+
+        self.output_dir_path = output_dir_path
+        self.query = query
+    #     self.database = self._load_ingest_files(database_path)
+
+    # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
+
+    #     database_ingest_out: list[Chunk] = []
+
+    #     print()
+    #     for path in database_path.rglob("*"):
+    #         print()
+    #         print(path)
+    #         new_file: list[dict[str, Any]]
+    #         with path.open("r") as file:
+    #             new_file = json.load(file)
+    #         add_chunks: list[Chunk] = []
+    #         for chunk in new_file:
+    #             print(chunk)
+    #             add_chunks.append(Chunk(**chunk))
 
     #         database_ingest_out += add_chunks
 
@@ -64,57 +126,10 @@ class FileAnswerer():
     database: list[Chunk]
     arg_inputs: InputHolder
 
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 database_path: Path, arg_inputs: InputHolder) -> None:
+    llm_files: dict[str, Path]
 
-        self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
-
-        self.output_dir_path = output_dir_path
-        self.query = query
-    #     self.database = self._load_ingest_files(database_path)
-
-    # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
-
-    #     database_ingest_out: list[Chunk] = []
-
-    #     print()
-    #     for path in database_path.rglob("*"):
-    #         print()
-    #         print(path)
-    #         new_file: list[dict[str, Any]]
-    #         with path.open("r") as file:
-    #             new_file = json.load(file)
-    #         add_chunks: list[Chunk] = []
-    #         for chunk in new_file:
-    #             print(chunk)
-    #             add_chunks.append[Chunk(**chunk)]
-
-    #         database_ingest_out += add_chunks
-
-    #     return database_ingest_out
-
-    def _load_llm(self) -> None:
-
-        # self._llm = Small_LLM_Model()
-        self._llm = Small_LLM_Model(device="cpu")
-
-        self.llm_files = self._llm.get_path_to_model_files()
-
-        with self.llm_files["vocab"].open() as vocab_file:
-            self.vocab_text_int: dict[str, int] = json.load(vocab_file)
-
-        self.vocab_int_text = {}
-
-        for k, v in self.vocab_text_int.items():
-            self.vocab_int_text[v] = k
-
-
-class StrSearcher():
-
-    _llm: Small_LLM_Model
-    database: list[Chunk]
-    arg_inputs: InputHolder
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
 
     def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
                  database_path: Path, arg_inputs: InputHolder) -> None:
@@ -140,59 +155,7 @@ class StrSearcher():
     #         add_chunks: list[Chunk] = []
     #         for chunk in new_file:
     #             print(chunk)
-    #             add_chunks.append[Chunk(**chunk)]
-
-    #         database_ingest_out += add_chunks
-
-    #     return database_ingest_out
-
-    def _load_llm(self) -> None:
-
-        # self._llm = Small_LLM_Model()
-        self._llm = Small_LLM_Model(device="cpu")
-
-        self.llm_files = self._llm.get_path_to_model_files()
-
-        with self.llm_files["vocab"].open() as vocab_file:
-            self.vocab_text_int: dict[str, int] = json.load(vocab_file)
-
-        self.vocab_int_text = {}
-
-        for k, v in self.vocab_text_int.items():
-            self.vocab_int_text[v] = k
-
-
-class FileSearcher():
-
-    _llm: Small_LLM_Model
-    database: list[Chunk]
-    arg_inputs: InputHolder
-
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 database_path: Path, arg_inputs: InputHolder) -> None:
-
-        self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
-
-        self.output_dir_path = output_dir_path
-        self.query = query
-    #     self.database = self._load_ingest_files(database_path)
-
-    # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
-
-    #     database_ingest_out: list[Chunk] = []
-
-    #     print()
-    #     for path in database_path.rglob("*"):
-    #         print()
-    #         print(path)
-    #         new_file: list[dict[str, Any]]
-    #         with path.open("r") as file:
-    #             new_file = json.load(file)
-    #         add_chunks: list[Chunk] = []
-    #         for chunk in new_file:
-    #             print(chunk)
-    #             add_chunks.append[Chunk(**chunk)]
+    #             add_chunks.append(Chunk(**chunk))
 
     #         database_ingest_out += add_chunks
 
@@ -220,9 +183,14 @@ class Evaluator():
     database: list[Chunk]
     arg_inputs: InputHolder
 
+    llm_files: dict[str, Path]
+
+    vocab_text_int: dict[str, int]
+    vocab_int_text: dict[int, str]
+
     def __init__(self, code_questions_file: Path, docs_questions_file: Path,
                  code_answers_file: Path, docs_answers_file: Path,
-                 output_dir_path: Path, database_path: Path,
+                 output_dir_path: Path, ingest_database_path: Path,
                  arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
@@ -248,7 +216,7 @@ class Evaluator():
         #     with json_path.open("w") as file:
         #         json.dump(obj.to_dict(), file, indent=4, ensure_ascii=False)
 
-        self.database = self._load_ingest_files(database_path)
+        self.database = self._load_ingest_files(ingest_database_path)
 
     def process(self) -> None:
 
@@ -258,12 +226,12 @@ class Evaluator():
 
         print("files created")
 
-    def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
+    def _load_ingest_files(self, ingest_database_path: Path) -> list[Chunk]:
 
         database_ingest_out: list[Chunk] = []
 
         print()
-        for path in database_path.rglob("*"):
+        for path in ingest_database_path.rglob("*"):
             print()
             print(path)
             new_file: list[dict[str, Any]]
@@ -272,7 +240,7 @@ class Evaluator():
             add_chunks: list[Chunk] = []
             for chunk in new_file:
                 print(chunk)
-                add_chunks.append[Chunk(**chunk)]
+                add_chunks.append(Chunk(**chunk))
 
             database_ingest_out += add_chunks
 
