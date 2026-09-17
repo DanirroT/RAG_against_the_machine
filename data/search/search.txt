@@ -1,0 +1,7 @@
+ID: input.imports - Score: 3.0
+ID: input.function.val_args - Score: 2.7320579209659592
+ID: input.class.PyHolder.method.__init__ - Score: 2.59701426358906
+ID: input.class.PyHolder.method.__str__ - Score: 2.413016881023967
+ID: input.class.PyHolder - Score: 2.2519233715803018
+ID: input.function.create_file - Score: 2.226139976244832
+ID: input.function.create_dir - Score: 2.0162979155362244

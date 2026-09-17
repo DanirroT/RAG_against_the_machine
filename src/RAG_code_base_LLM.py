@@ -110,31 +110,6 @@ class RAGCodeBaseLLM():
                            output_dir_str)
             print(f"Evaluation Finished! Check in {output_dir_str}")
 
-        # try:
-        #     self._load_llm(mode)
-        # except ModuleNotFoundError as e:
-        #     raise ModuleNotFoundError(
-        #         f"Module Dependencies were not met:\n{e}")
-        # except httpcore.ConnectError as e:
-        #     raise httpcore.ConnectError(
-        #         "Small_LLM_Model was unable to Connect. "
-        #         f"Check Connection and Try again another time\n{e}")
-
-        # except Exception as e:
-        #     raise Exception("An unexpected error has occurred during "
-        #                     f"LLM Class Creation:\n{e}")
-
-        # try:
-
-        #     self._make_deffunct_ids()
-
-        # except DefFunctException as e:
-        #     error_len = e.e_len
-        #     del e.e_len
-        #     raise ValueError("An error has occurred in the Processing of "
-        #                      f"Callable Function number {error_len}: "
-        #                      f"{self.funct_defs[error_len]}:\n\n{e}")
-
     def _ingest(self, input_dir_str: str, output_dir_str: str) -> None:
 
         input_dir_path = Path(input_dir_str)
@@ -175,44 +150,76 @@ class RAGCodeBaseLLM():
         # ingestor.print()
 
     def _str_search(self, lookup: str,
-                    input_dir_str: str, output_dir_str: str) -> None:
+                    input_dir_str: str, output_file_str: str) -> None:
 
         input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
+        output_dir_path = Path(output_file_str)
         if output_dir_path.exists():
+            # if not output_dir_path.is_dir():
+            #     answer = input(
+            #         f"'{output_file_str}' exists but is not a directory."
+            #         "\nReplace it with a directory? [y/N]: "
+            #     ).strip().lower()
+            # else:
+            #     answer = input(
+            #         f"Directory '{output_file_str}' already exists.\n"
+            #         "Overwrite its contents? [y/N]: "
+            #     ).strip().lower()
+
+            # if answer != "y":
+            #     print("Operation cancelled.")
+            #     raise FileExistsError
+            # else:
             if output_dir_path.is_file():
                 output_dir_path.unlink()
             else:
                 rmtree(output_dir_path)
-        output_dir_path.mkdir(parents=True)
+
+        create_file(output_dir_path, force=True)
+
         query = self.arg_inputs.question
 
         StrSearcher(query, input_dir_path, output_dir_path,
                     Path("data/processed/"), self.arg_inputs)
 
     def _file_search(self, lookup: str,
-                     input_dir_str: str, output_dir_str: str) -> None:
-
-        pass
+                     input_dir_str: str, output_file_str: str) -> None:
 
         input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
+        output_dir_path = Path(output_file_str)
         if output_dir_path.exists():
+            # if not output_dir_path.is_dir():
+            #     answer = input(
+            #         f"'{output_file_str}' exists but is not a directory."
+            #         "\nReplace it with a directory? [y/N]: "
+            #     ).strip().lower()
+            # else:
+            #     answer = input(
+            #         f"Directory '{output_file_str}' already exists.\n"
+            #         "Overwrite its contents? [y/N]: "
+            #     ).strip().lower()
+
+            # if answer != "y":
+            #     print("Operation cancelled.")
+            #     raise FileExistsError
+            # else:
             if output_dir_path.is_file():
                 output_dir_path.unlink()
             else:
                 rmtree(output_dir_path)
-        output_dir_path.mkdir(parents=True)
+
+        create_file(output_dir_path, force=True)
+        
         query = self.arg_inputs.question
         FileSearcher(query, input_dir_path, output_dir_path,
                      Path("data/processed/"), self.arg_inputs)
 
-    def _str_answer(self, input_dir_str: str, output_dir_str: str) -> None:
+    def _str_answer(self, input_dir_str: str, output_file_str: str) -> None:
 
         pass
 
         input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
+        output_dir_path = Path(output_file_str)
         if output_dir_path.exists():
             if output_dir_path.is_file():
                 output_dir_path.unlink()
@@ -224,12 +231,12 @@ class RAGCodeBaseLLM():
         StrAnswerer(query, input_dir_path, output_dir_path,
                     Path("data/processed/"), self.arg_inputs)
 
-    def _file_answer(self, input_dir_str: str, output_dir_str: str) -> None:
+    def _file_answer(self, input_dir_str: str, output_file_str: str) -> None:
 
         pass
 
         input_dir_path = Path(input_dir_str)
-        output_dir_path = Path(output_dir_str)
+        output_dir_path = Path(output_file_str)
         if output_dir_path.exists():
             if output_dir_path.is_file():
                 output_dir_path.unlink()

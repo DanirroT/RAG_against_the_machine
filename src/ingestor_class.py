@@ -523,7 +523,7 @@ class Ingestor():
                     new_chunk = Chunk(
                         id=f"{chunk.id}.sub{i}",
                         path=str(chunk.path),
-                        type=chunk.type,
+                        type=str(chunk.type),
                         parent=chunk.parent,
                         start_line=chunk.start_line,
                         end_line=chunk.end_line,
@@ -539,7 +539,7 @@ class Ingestor():
                 split_chunks.append(Chunk(
                     id=chunk.id,
                     path=str(chunk.path),
-                    type=chunk.type,
+                    type=str(chunk.type),
                     parent=chunk.parent,
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,

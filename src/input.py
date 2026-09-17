@@ -154,30 +154,41 @@ def val_args() -> InputHolder:
 
 def get_from_json_file(file_path: str | Path) -> Any:
 
-    with open(file_path) as file_obj:
-        output = json.load(file_obj)
+    try:
+        with open(file_path) as file_obj:
+            output = json.load(file_obj)
+    except FileNotFoundError:
+        print(f"File '{file_path}' not found. "
+              "Please create the file and try again.")
+        raise
+    except json.JSONDecodeError as e:
+        print(f"File '{file_path}' is not valid JSON.", e, sep="\n")
+        raise
 
     return output
 
 
-def create_file(file_name: str, force: bool = False) -> Path:
+def create_file(file_name_raw: str | Path, force: bool = False) -> Path:
 
-    file_path = Path(file_name)
+    if isinstance(file_name_raw, str):
+        file_path = Path(file_name_raw)
+    else:
+        file_path = file_name_raw
 
     if file_path.exists():
         if not force:
-            print(f"File '{file_name}' "
+            print(f"File '{file_path}' "
                   "already exists, do you wish to replace it?")
             answer = input("Y for 'yes', any for 'no': ").strip().lower()
             if answer != "y":
                 print("Stopping Program")
-                raise FileExistsError(file_name)
+                raise FileExistsError(file_name_raw)
             print("Continuing...")
         if file_path.is_file():
             file_path.unlink()
         elif file_path.is_dir():
             if not force:
-                print(f"'{file_name}' "
+                print(f"'{file_name_raw}' "
                       "is a directory are you SURE you wish to replace it?")
                 answer = input("Y for 'yes', any for 'no': ").strip().lower()
                 if answer != "y":

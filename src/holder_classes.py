@@ -388,8 +388,8 @@ class ChunkRaw(BaseModel):
     path: Path
     type: ChunkType
     parent: str | None = Field(default=None)
-    start_line: int = Field(gt=0)
-    end_line: int = Field(gt=0)
+    start_line: int = Field(ge=-1)
+    end_line: int = Field(ge=-1)
     content: str = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -449,20 +449,20 @@ class ChunkRaw(BaseModel):
 class Chunk(BaseModel):
     id: str = Field(min_length=1)
     path: str = Field(min_length=1)
-    type: ChunkType
+    type: str
     parent: str | None = Field(default=None)
-    start_line: int = Field(gt=0)
-    end_line: int = Field(gt=0)
+    start_line: int = Field(ge=-1)
+    end_line: int = Field(ge=-1)
     content: str = Field(min_length=1)
     content_vector: list[int] = Field(min_length=1)
 
-    @model_validator(mode="after")
-    def validate_inputs(self) -> "Chunk":
+    # @model_validator(mode="after")
+    # def validate_inputs(self) -> "Chunk":
 
-        if self.type == ChunkType.METHOD and not self.parent:
-            raise ValueError("A method chunk must have a parent class.")
+    #     if self.type == ChunkType.METHOD and not self.parent:
+    #         raise ValueError("A method chunk must have a parent class.")
 
-        return (self)
+    #     return (self)
 
     def to_dict(self) -> dict[str, Any]:
 

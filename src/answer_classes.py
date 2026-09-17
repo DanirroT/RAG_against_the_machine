@@ -1,7 +1,7 @@
 from pathlib import Path
 import json
 from typing import Any
-from src import (InputHolder, ChunkScorePair, Chunk, ChunkType,
+from src import (InputHolder, ChunkScorePair, Chunk,
                  Small_LLM_Model, get_from_json_file)
 from math import log, e
 
@@ -18,13 +18,14 @@ class StrSearcher():
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
 
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 ingest_database_path: Path, arg_inputs: InputHolder) -> None:
+    def __init__(self, query: str, input_dir_path: Path,
+                 output_file_path: Path, ingest_database_path: Path,
+                 arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
         self.input_dir_path = input_dir_path
 
-        self.output_dir_path = output_dir_path
+        self.output_file_path = output_file_path
         self.query = query
         self.database = self._load_ingest_files(ingest_database_path)
 
@@ -33,6 +34,8 @@ class StrSearcher():
         print(f"\nTop {self.arg_inputs.k} results for query: '{self.query}'\n")
         print("\n".join(f"Chunk ID: {chunk.chunk.id}, Score: {chunk.score}"
                         for chunk in self.k_database))
+
+        self.print()
 
     def _load_ingest_files(self, ingest_database_path: Path
                            ) -> list[ChunkScorePair]:
@@ -52,7 +55,7 @@ class StrSearcher():
                 # print()
                 id: str = chunk["id"]
                 chunk_path: str = chunk["path"]
-                type: ChunkType = chunk["type"]
+                type: str = chunk["type"]
                 parent: str = chunk["parent"]
                 start_line: int = chunk["start_line"]
                 end_line: int = chunk["end_line"]
@@ -84,7 +87,7 @@ class StrSearcher():
                              for chunk in self.database) / database_len)
         bm25_k1 = 1.4
         bm25_b = 0.75
-        title_weight = 2.0
+        title_weight = 3.0
 
         # simplified_query = (
         #     " ".join([w.lower() for w in self.query.split() if w not in
@@ -96,7 +99,7 @@ class StrSearcher():
             print(chunk.chunk.id.replace(".", " ").lower(),
                   chunk.chunk.content.lower(), sep="\n---\n")
 
-        input()
+        # input()
 
         for variants in complex_query.values():
 
@@ -170,6 +173,22 @@ class StrSearcher():
                 del split_text[w]
 
         return split_text
+
+    def print(self) -> None:
+
+        try:
+
+            with ((self.output_file_path).open("w") as search_file):
+                # json.dump([chunk.chunk.__dict__
+                #            for chunk in self.k_database],
+                #           search_file, indent=4)
+                for chunk in self.k_database:
+                    search_file.write(f"ID: {chunk.chunk.id} - "
+                                      f"Score: {chunk.score}\n")
+
+        except FileNotFoundError:
+            print(f"Output file '{self.output_file_path}' not found. "
+                  "Please create the file and try again.")
 
     def _load_llm(self) -> None:
 
