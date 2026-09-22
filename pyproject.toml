@@ -7,8 +7,10 @@ dependencies = [
     "dotenv>=0.9.9",
     "flake8>=7.3.0",
     "mypy>=2.3.0",
+    "stubs>=1.0.0",
     "torch>=2.14.0",
     "transformers>=5.16.1",
+    "types-tqdm>=4.70.0.20260906",
 ]
 
 [dependency-groups]

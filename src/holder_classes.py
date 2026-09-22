@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 # from enum import Enum
 from typing import Any
-
-from src import Small_LLM_Model
+from src import (Small_Tokenizer)
 
 
 class InputHolder(BaseModel):
@@ -424,7 +423,7 @@ class ChunkRaw(BaseModel):
             "content": self.content,
         }
 
-    def to_vector(self, llm: Small_LLM_Model, mode: str = "c"
+    def to_vector(self, llm: Small_Tokenizer, mode: str = "c"
                   ) -> list[int]:
         if mode == "h":
             return llm.encode(f"id: {self.id}\n"

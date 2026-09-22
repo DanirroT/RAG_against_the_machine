@@ -5,13 +5,13 @@ import ast
 from markdown_it import MarkdownIt
 from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
                  OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkRaw,
-                 ChunkType,
-                 Small_LLM_Model)
+                 ChunkType, Small_Tokenizer)
+from tqdm import tqdm
 
 
 class Ingestor():
 
-    _llm: Small_LLM_Model
+    _tokenizer: Small_Tokenizer
     arg_inputs: InputHolder
 
     llm_files: dict[str, Path]
@@ -39,10 +39,10 @@ class Ingestor():
 
         self.ingest_out_flattened = self.flatten_file_holders(self.ingest_out)
 
-        print("flattened output:")
+        # print("flattened output:")
 
-        for output in self.ingest_out_flattened:
-            print("\n\n", output)
+        # for output in self.ingest_out_flattened:
+        #     print("\n\n", output)
 
         # def print(self) -> None:
 
@@ -78,16 +78,16 @@ class Ingestor():
         if last_path:
             with last_path.open("a") as file:
                 file.write("\n]")
-        print("files created")
+        # print("files created")
 
     def _load_all_files(self, input_dir_path: Path) -> list[FileHolder]:
 
         ingest_out: list[FileHolder] = []
 
-        print()
-        for path in input_dir_path.rglob("*"):
-            print()
-            print(path)
+        print("\nLoading Files from:", input_dir_path, "\n")
+        for path in tqdm(input_dir_path.rglob("*")):
+            # print()
+            # print(path)
             if path.is_dir() or any(part.startswith(".")
                                     for part in path.parts):
                 continue
@@ -252,7 +252,7 @@ class Ingestor():
         tag: str = "0"
 
         for token in md_parsed:
-            print(token)
+            # print(token)
             if token.type == "heading_open":
                 waiting_heading = True
                 tag = token.tag
@@ -327,10 +327,11 @@ class Ingestor():
 
         flattened_chunks: list[ChunkRaw] = []
 
-        for file_holder in file_holders:
+        print("\nFlattening Files...\n")
+        for file_holder in tqdm(file_holders):
             if isinstance(file_holder, PyHolder):
 
-                print(file_holder)
+                # print(file_holder)
 
                 flattened_chunks += self.flatten_py(file_holder)
 
@@ -494,14 +495,16 @@ class Ingestor():
         # self.arg_inputs.max_context_length = 60
         overlap = 5
 
-        print(f"max_context_length = {self.arg_inputs.max_context_length}")
+        # print(f"max_context_length = {self.arg_inputs.max_context_length}")
 
         for chunk in chunks:
-            chuck_header = chunk.to_vector(self._llm, "h")
-            # print("---", self._llm.decode(chuck_header), "---", sep="\n")
-            chunk_vector = chunk.to_vector(self._llm, "c")
+            chuck_header = chunk.to_vector(self._tokenizer, "h")
+            # print("---", self._tokenizer.decode(chuck_header),
+            #       "---", sep="\n")
+            chunk_vector = chunk.to_vector(self._tokenizer, "c")
             # print()
-            # print("---", self._llm.decode(chunk_vector), "---", sep="\n")
+            # print("---", self._tokenizer.decode(chunk_vector),
+            #       "---", sep="\n")
             # input()
             chunk_header_len = len(chuck_header)
             vector_len = len(chunk_vector)
@@ -511,14 +514,13 @@ class Ingestor():
                 max_content_size = (self.arg_inputs.max_context_length
                                     - overlap - chunk_header_len)
 
-                print(f"({chunk_header_len} + {vector_len}) - Splitting "
-                      f"into sub-chunks of size {max_content_size}")
+                # print(f"({chunk_header_len} + {vector_len}) - Splitting "
+                #       f"into sub-chunks of size {max_content_size}")
                 start = 0
                 end = 0
                 while end != vector_len:
                     end = min(start + max_content_size, vector_len)
-                    print(f"sub-chunk {i}: ",
-                          start, "-", end, sep="")
+                    # print(f"sub-chunk {i}: ", start, "-", end, sep="")
                     i += 1
                     new_chunk = Chunk(
                         id=f"{chunk.id}.sub{i}",
@@ -527,15 +529,16 @@ class Ingestor():
                         parent=chunk.parent,
                         start_line=chunk.start_line,
                         end_line=chunk.end_line,
-                        content=self._llm.decode(chunk_vector[start:end]),
+                        content=self._tokenizer.decode(
+                            chunk_vector[start:end]),
                         content_vector=(chuck_header +
                                         chunk_vector[start:end])
                     )
                     split_chunks.append(new_chunk)
                     start = end - overlap
             else:
-                print(f"(({chunk_header_len} + {vector_len})) - "
-                      f"Not Splitting")
+                # print(f"(({chunk_header_len} + {vector_len})) - "
+                #       f"Not Splitting")
                 split_chunks.append(Chunk(
                     id=chunk.id,
                     path=str(chunk.path),
@@ -543,27 +546,27 @@ class Ingestor():
                     parent=chunk.parent,
                     start_line=chunk.start_line,
                     end_line=chunk.end_line,
-                    content=self._llm.decode(chunk_vector),
+                    content=self._tokenizer.decode(chunk_vector),
                     content_vector=(chuck_header + chunk_vector)
                 ))
 
             for sub_chunk in split_chunks[-i:]:
-                print("final len:", len(sub_chunk.content_vector))
-                print("final out:", self._llm.decode(
-                    sub_chunk.content_vector), "\n", sep="\n")
+                # print("final len:", len(sub_chunk.content_vector))
+                # print("final out:", self._tokenizer.decode(
+                #     sub_chunk.content_vector), "\n", sep="\n")
                 if (len(sub_chunk.content_vector) >
                         self.arg_inputs.max_context_length):
                     raise ValueError(f"Chunk {sub_chunk.id} is too long")
 
-            print("\n\n")
+            # print("\n\n")
 
         return split_chunks
         """
         for chunk in chunks:
             nb_splits = 1
             input("\n\n")
-            chuck_header = chunk.to_vector(self._llm, "h")
-            chunk_vector = self._llm.encode(chunk.content)
+            chuck_header = chunk.to_vector(self._tokenizer, "h")
+            chunk_vector = self._tokenizer.encode(chunk.content)
             chunk_header_len = len(chuck_header)
             vector_len = len(chunk_vector)
             whole_vector_len = chunk_header_len + vector_len
@@ -607,10 +610,9 @@ class Ingestor():
 
     def _load_llm(self) -> None:
 
-        # self._llm = Small_LLM_Model(False)
-        self._llm = Small_LLM_Model(False, device="cpu")
+        self._tokenizer = Small_Tokenizer()
 
-        self.llm_files = self._llm.get_path_to_model_files()
+        self.llm_files = self._tokenizer.get_path_to_model_files()
 
         with self.llm_files["vocab"].open() as vocab_file:
             self.vocab_text_int: dict[str, int] = json.load(vocab_file)

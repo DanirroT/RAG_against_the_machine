@@ -1,15 +1,14 @@
 from dotenv import load_dotenv
 from pathlib import Path
 import torch
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          PreTrainedTokenizer, PreTrainedModel)
-from huggingface_hub import hf_hub_download
+from transformers import (AutoModelForCausalLM, PreTrainedModel)
+from src import ABC_Small_LLM_Model, Small_Tokenizer
 
 
 # logging.set_verbosity_error()  # keep the console clean
 
 
-class Small_LLM_Model:
+class Small_LLM_Model(ABC_Small_LLM_Model):
     """
     Utility class wrapping a lightweight Hugging Face causal-LM for fast,
     low-memory experimentation.
@@ -31,12 +30,11 @@ class Small_LLM_Model:
     _model_name: str
     _device: str
     _dtype: torch.dtype
-    _tokenizer: PreTrainedTokenizer
+    _tokenizer: Small_Tokenizer
     _model: PreTrainedModel | None
 
     def __init__(
         self,
-        mode: bool = True,
         model_name: str = "Qwen/Qwen3-0.6B",
         *,
         device: str | None = None,
@@ -47,6 +45,10 @@ class Small_LLM_Model:
         self._model_name = model_name
 
         load_dotenv()
+
+        # --- load tokenizer & model -----------------------------------------
+        self._tokenizer = Small_Tokenizer(
+            model_name, trust_remote_code=trust_remote_code)
 
         # Auto-select device with priority: mps > cuda > cpu
         if device is None:
@@ -63,51 +65,29 @@ class Small_LLM_Model:
                      else torch.float32)
         self._dtype = dtype
 
-        # --- load tokenizer & model -----------------------------------------
-        self._tokenizer = AutoTokenizer.from_pretrained(
-            model_name, trust_remote_code=trust_remote_code
-        )
-        if self._tokenizer.pad_token_id is None:
-            # ensure we have a pad token to keep batch helpers happy
-            self._tokenizer.pad_token_id = self._tokenizer.eos_token_id
+        self._model = (
+            AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=self._dtype,
+                device_map="auto" if self._device == "cuda" else None,
+                trust_remote_code=trust_remote_code,
+            ))
+        self._model.to(self._device)
+        self._model.eval()
 
-        if mode:
-            self._model = (
-                AutoModelForCausalLM.from_pretrained(
-                    model_name,
-                    torch_dtype=self._dtype,
-                    device_map="auto" if self._device == "cuda" else None,
-                    trust_remote_code=trust_remote_code,
-                ))
-            self._model.to(self._device)
-            self._model.eval()
-
-            # switch to inference-only mode
-            for p in self._model.parameters():
-                p.requires_grad = False
-        else:
-            self._model = None
+        # switch to inference-only mode
+        for p in self._model.parameters():
+            p.requires_grad = False
 
     def encode(self, text: str) -> list[int]:
         """
-        Tokenize *text* and return a 2-D ``input_ids``
-        tensor on the target device.
+        Tokenize *text* and return the vector (list of integers).
         """
-        ids = self._tokenizer.encode(text, add_special_tokens=False)
+        return self._tokenizer.encode(text)
 
-        tokenized_prompt = torch.tensor([ids], device=self._device,
-                                        dtype=torch.long)
-
-        tokenized_int_prompt: list[int] = (  # pyright: ignore
-            tokenized_prompt[0].tolist())  # pyright: ignore
-
-        return (tokenized_int_prompt)
-
-    def decode(self, ids: torch.Tensor | list[int]) -> str:
+    def decode(self, ids: list[int]) -> str:
         """Inverse of :py:meth:`encode`. Removes special tokens."""
-        if isinstance(ids, torch.Tensor):
-            ids = ids.tolist()
-        return self._tokenizer.decode(ids, skip_special_tokens=True)
+        return self._tokenizer.decode(ids)
 
     def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:
         """
@@ -126,26 +106,4 @@ class Small_LLM_Model:
         return [float(x) for x in logits]
 
     def get_path_to_model_files(self) -> dict[str, Path]:
-        vocab_file_name = self._tokenizer.vocab_files_names.get(
-            'vocab_file', "vocab.json")
-        vocab_path = hf_hub_download(
-            repo_id=self._model_name,
-            filename=vocab_file_name
-        )
-
-        merges_file_name = self._tokenizer.vocab_files_names.get(
-            'merges_file', "merges.txt")
-        merges_path = hf_hub_download(
-            repo_id=self._model_name,
-            filename=merges_file_name
-        )
-
-        tokenizer_file_name = self._tokenizer.vocab_files_names.get(
-            'tokenizer_file', "tokenizer.json")
-        tokenizer_path = hf_hub_download(
-            repo_id=self._model_name,
-            filename=tokenizer_file_name
-        )
-        return {"vocab": Path(vocab_path),
-                "merges": Path(merges_path),
-                "tokenizer": Path(tokenizer_path)}
+        return self._tokenizer.get_path_to_model_files()

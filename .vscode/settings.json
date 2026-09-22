@@ -25,6 +25,7 @@
         "pycache",
         "pydantic",
         "Qwen",
+        "relevants",
         "resolv",
         "tokenswise",
         "tolist",

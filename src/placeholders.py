@@ -3,12 +3,12 @@ import json
 from typing import Any
 from src import (InputHolder, Chunk,
                  #  ChunkType,
-                 Small_LLM_Model)
+                 ABC_Small_LLM_Model)
 
 
 class FileSearcher():
 
-    _llm: Small_LLM_Model
+    _llm: ABC_Small_LLM_Model
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -17,14 +17,13 @@ class FileSearcher():
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
 
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 database_path: Path, arg_inputs: InputHolder) -> None:
+    def __init__(self, database_path: Path, output_dir_path: Path,
+                 arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
+        self.database_path = database_path
 
         self.output_dir_path = output_dir_path
-        self.query = query
     #     self.database = self._load_ingest_files(database_path)
 
     # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
@@ -48,6 +47,8 @@ class FileSearcher():
     #     return database_ingest_out
 
     def _load_llm(self) -> None:
+
+        from src.llm_sdk import Small_LLM_Model
 
         # self._llm = Small_LLM_Model()
         self._llm = Small_LLM_Model(device="cpu")
@@ -65,7 +66,7 @@ class FileSearcher():
 
 class StrAnswerer():
 
-    _llm: Small_LLM_Model
+    _llm: ABC_Small_LLM_Model
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -74,14 +75,13 @@ class StrAnswerer():
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
 
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 database_path: Path, arg_inputs: InputHolder) -> None:
+    def __init__(self, database_path: Path, output_dir_path: Path,
+                 arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
+        self.database_path = database_path
 
         self.output_dir_path = output_dir_path
-        self.query = query
     #     self.database = self._load_ingest_files(database_path)
 
     # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
@@ -105,6 +105,8 @@ class StrAnswerer():
     #     return database_ingest_out
 
     def _load_llm(self) -> None:
+
+        from src.llm_sdk import Small_LLM_Model
 
         # self._llm = Small_LLM_Model()
         self._llm = Small_LLM_Model(device="cpu")
@@ -122,7 +124,7 @@ class StrAnswerer():
 
 class FileAnswerer():
 
-    _llm: Small_LLM_Model
+    _llm: ABC_Small_LLM_Model
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -131,14 +133,13 @@ class FileAnswerer():
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
 
-    def __init__(self, query: str, input_dir_path: Path, output_dir_path: Path,
-                 database_path: Path, arg_inputs: InputHolder) -> None:
+    def __init__(self, database_path: Path, output_dir_path: Path,
+                 arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
+        self.database_path = database_path
 
         self.output_dir_path = output_dir_path
-        self.query = query
     #     self.database = self._load_ingest_files(database_path)
 
     # def _load_ingest_files(self, database_path: Path) -> list[Chunk]:
@@ -163,6 +164,8 @@ class FileAnswerer():
 
     def _load_llm(self) -> None:
 
+        from src.llm_sdk import Small_LLM_Model
+
         # self._llm = Small_LLM_Model()
         self._llm = Small_LLM_Model(device="cpu")
 
@@ -179,7 +182,7 @@ class FileAnswerer():
 
 class Evaluator():
 
-    _llm: Small_LLM_Model
+    _llm: ABC_Small_LLM_Model
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -247,6 +250,8 @@ class Evaluator():
         return database_ingest_out
 
     def _load_llm(self) -> None:
+
+        from src.llm_sdk import Small_LLM_Model
 
         # self._llm = Small_LLM_Model()
         self._llm = Small_LLM_Model(device="cpu")

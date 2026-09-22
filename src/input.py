@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, model_validator
 class InputHolder(BaseModel):
 
     mode: str = Field()
-    max_chunk_size: int = Field(gt=0)
+    max_chunk_size: int = Field(gt=0, le=2000)
     dataset_path: str = Field(min_length=1)
     k: float = Field(gt=0)
     save_directory: str = Field(min_length=1)
@@ -75,9 +75,9 @@ def val_args() -> InputHolder:
 
     arg_inputs = vars(parser.parse_args())
 
-    print()
-    print(arg_inputs)
-    print()
+    # print()
+    # print(arg_inputs)
+    # print()
 
     return InputHolder(**arg_inputs)  # pyright: ignore
 
@@ -362,30 +362,30 @@ def bool_error(error_type: str, field: str, msg: str, input_raw: bool) -> None:
 
 def error_processing(error_details: list[ErrorDetails]) -> None:
 
-    print()
-    print()
-    print("\n".join(map(str, error_details)))
-    print("ALL:", error_details, sep="\n")
-    print()
-    print()
+    # print()
+    # print()
+    # print("\n".join(map(str, error_details)))
+    # print("ALL:", error_details, sep="\n")
+    # print()
+    # print()
 
     for error in error_details:
 
-        print()
-        print("current:", error)
-        print()
+        # print()
+        # print("current:", error)
+        # print()
 
         error_type = error["type"]
         field = error["loc"][0]
         msg = error["msg"]
         input = error["input"]
         get_expected = error.get("ctx")
-        print("get expected:", get_expected)
+        # print("get expected:", get_expected)
         expected = (list(get_expected.values())[0]
                     if get_expected else get_expected)
 
-        print("unpacked:", error_type, field, msg, input, expected)
-        print()
+        # print("unpacked:", error_type, field, msg, input, expected)
+        # print()
 
         if field in ["mode", "dataset_path", "save_directory",
                      "student_answer_path", "student_search_results_path",
