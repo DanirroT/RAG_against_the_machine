@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 # from enum import Enum
 from typing import Any
-from src import (Small_Tokenizer)
+from src import (ABC_Small_LLM_Model)
 
 
 class InputHolder(BaseModel):
@@ -24,23 +24,43 @@ class InputHolder(BaseModel):
         if self.mode == "index" and not self.max_chunk_size:
             raise ValueError(f"When calling the '{self.mode}' mode, option"
                              " max_chunk_size must be provided.")
+
         if self.mode == "search" and not self.k:
             raise ValueError(f"When calling the '{self.mode}' mode, option"
                              " k must be provided.")
+
+        if ((self.mode == "search" or self.mode == "answer")
+                and not self.question):
+            raise ValueError(f"When calling the '{self.mode}' mode, a question"
+                             " must be provided as the second argument.")
+
+        if ((self.mode == "index" or self.mode == "search_dataset" or
+             self.mode == "answer_dataset" or self.mode == "evaluate")
+                and self.question):
+            raise ValueError(f"The '{self.mode}' mode does not accept "
+                             "a question as the second argument.")
+
         if (self.mode == "search_dataset" and
                 (not self.save_directory or not self.dataset_path)):
             raise ValueError(f"When calling the '{self.mode}' mode, option"
                              " save_directory and dataset_path"
                              " must be provided.")
+
         if self.mode == "answer" and not self.k:
             raise ValueError(f"When calling the '{self.mode}' mode, option"
                              " k must be provided.")
+
+        if self.mode == "answer" and not self.question:
+            raise ValueError(f"When calling the '{self.mode}' mode, a question"
+                             " must be provided as the second argument.")
+
         if (self.mode == "answer_dataset" and
                 (not self.student_search_results_path
                  or not self.save_directory)):
             raise ValueError(f"When calling the '{self.mode}' mode, option"
                              " student_search_results_path and save_directory"
                              " must be provided.")
+
         if (self.mode == "evaluate" and
                 (not self.student_search_results_path
                  or not self.dataset_path)):
@@ -76,12 +96,15 @@ class FileHolder(ABC):
 
 class SectionHolder(ABC):
 
+    path: Path
     name: str
     start_line: int
     end_line: int
 
     @abstractmethod
-    def __init__(self, name: str, start_line: int, end_line: int) -> None:
+    def __init__(self, path: Path, name: str,
+                 start_line: int, end_line: int) -> None:
+        self.path = path
         self.name = name
         self.start_line = start_line
         self.end_line = end_line
@@ -97,22 +120,20 @@ class SectionHolder(ABC):
 
 class FunctHolder(SectionHolder):
 
-    name: str
-    start_line: int
-    end_line: int
     args: list[str]
     returns: str
     docstring: str | None
     body: str
 
-    def __init__(self, name: str,
+    def __init__(self, path: Path,
+                 name: str,
                  start_line: int,
                  end_line: int,
                  args: list[str],
                  returns: str,
                  body: str,
                  docstring: str | None = None) -> None:
-        super().__init__(name, start_line, end_line)
+        super().__init__(path, name, start_line, end_line)
         self.args = args
         self.returns = returns
         self.docstring = docstring
@@ -155,22 +176,20 @@ class FunctHolder(SectionHolder):
 
 class ClassHolder(SectionHolder):
 
-    name: str
-    start_line: int
-    end_line: int
     inherits: list[str]
     docstring: str
     var_annotations: list[str]
     methods: list[FunctHolder]
 
-    def __init__(self, name: str,
+    def __init__(self, path: Path,
+                 name: str,
                  start_line: int,
                  end_line: int,
                  docstring: str,
                  inherits: list[str],
                  var_annotations: list[str] | None = None,
                  methods: list[FunctHolder] | None = None) -> None:
-        super().__init__(name, start_line, end_line)
+        super().__init__(path, name, start_line, end_line)
         self.docstring = docstring
         self.inherits = inherits
         self.var_annotations = (var_annotations
@@ -218,20 +237,20 @@ class PyHolder(FileHolder):
     imports_end: int
     functs: list[FunctHolder]
     classes: list[ClassHolder]
-    start_line: int
-    end_line: int
+    start_char: int
+    end_char: int
 
     def __init__(self, path: Path,
-                 start_line: int | None = None,
-                 end_line: int | None = None,
+                 start_char: int | None = None,
+                 end_char: int | None = None,
                  imports: list[str] | None = None,
                  imports_start: int | None = None,
                  imports_end: int | None = None,
                  functs: list[FunctHolder] | None = None,
                  classes: list[ClassHolder] | None = None) -> None:
         super().__init__(path)
-        self.start_line = start_line if start_line is not None else -1
-        self.end_line = end_line if end_line is not None else -1
+        self.start_char = start_char if start_char is not None else -1
+        self.end_char = end_char if end_char is not None else -1
         self.imports = imports if imports is not None else []
         self.imports_start = imports_start if imports_start is not None else -1
         self.imports_end = imports_end if imports_end is not None else -1
@@ -256,22 +275,21 @@ class PyHolder(FileHolder):
 
 
 class MDSections(SectionHolder):
-    name: str
-    start_line: int
-    end_line: int
+
     tag: str
     level: int
     content: str
     children: list["MDSections"]
 
-    def __init__(self, tag: str,
-                 level: int,
+    def __init__(self, path: Path,
                  name: str,
                  start_line: int,
                  end_line: int,
+                 tag: str,
+                 level: int,
                  content: str | None = None,
                  children: list["MDSections"] | None = None) -> None:
-        super().__init__(name, start_line, end_line)
+        super().__init__(path, name, start_line, end_line)
         self.tag = tag
         self.level = level
         self.content = content if content is not None else ""
@@ -387,8 +405,8 @@ class ChunkRaw(BaseModel):
     path: Path
     type: ChunkType
     parent: str | None = Field(default=None)
-    start_line: int = Field(ge=-1)
-    end_line: int = Field(ge=-1)
+    start_char: int = Field(ge=-1)
+    end_char: int = Field(ge=-1)
     content: str = Field(min_length=1)
 
     @model_validator(mode="after")
@@ -406,8 +424,8 @@ class ChunkRaw(BaseModel):
             f"\"path\": {str(self.path)},\n"
             f"\"type\": {str(self.type)},\n"
             f"\"parent\": {self.parent},\n"
-            f"\"start_line\": {self.start_line}, - "
-            f"\"end_line\": {self.end_line},\n"
+            f"\"start_char\": {self.start_char}, - "
+            f"\"end_char\": {self.end_char},\n"
             f"\"content\":\n{self.content}"
         )
 
@@ -418,24 +436,24 @@ class ChunkRaw(BaseModel):
             "path": str(self.path),
             "type": str(self.type),
             "parent": self.parent,
-            "start_line": self.start_line,
-            "end_line": self.end_line,
+            "start_char": self.start_char,
+            "end_char": self.end_char,
             "content": self.content,
         }
 
-    def to_vector(self, llm: Small_Tokenizer, mode: str = "c"
+    def to_vector(self, llm: ABC_Small_LLM_Model, mode: str = "c"
                   ) -> list[int]:
         if mode == "h":
             return llm.encode(f"id: {self.id}\n"
                               f"path: {self.path}\nparent: {self.parent}\n"
-                              f"start_line: {self.start_line} "
-                              f"end_line: {self.end_line}\n"
+                              f"start_char: {self.start_char} "
+                              f"end_char: {self.end_char}\n"
                               "content:\n")
         if mode == "a":
             return llm.encode(f"id: {self.id}\n"
                               f"path: {self.path}\nparent: {self.parent}\n"
-                              f"start_line: {self.start_line} "
-                              f"end_line: {self.end_line}\n"
+                              f"start_char: {self.start_char} "
+                              f"end_char: {self.end_char}\n"
                               f"content:\n{self.content}")
         if mode == "c":
             return llm.encode(self.content)
@@ -450,8 +468,8 @@ class Chunk(BaseModel):
     path: str = Field(min_length=1)
     type: str
     parent: str | None = Field(default=None)
-    start_line: int = Field(ge=-1)
-    end_line: int = Field(ge=-1)
+    start_char: int = Field(ge=-1)
+    end_char: int = Field(ge=-1)
     content: str = Field(min_length=1)
     content_vector: list[int] = Field(min_length=1)
 
@@ -470,8 +488,8 @@ class Chunk(BaseModel):
             "path": str(self.path),
             "type": str(self.type),
             "parent": self.parent,
-            "start_line": self.start_line,
-            "end_line": self.end_line,
+            "start_char": self.start_char,
+            "end_char": self.end_char,
             "content": self.content,
             "vector": self.content_vector
         }
@@ -483,8 +501,8 @@ class Chunk(BaseModel):
             f"\"path\": {str(self.path)},\n"
             f"\"type\": {str(self.type)},\n"
             f"\"parent\": {self.parent},\n"
-            f"\"start_line\": {self.start_line}, "
-            f"\"end_line\": {self.end_line},\n"
+            f"\"start_char\": {self.start_char}, "
+            f"\"end_char\": {self.end_char},\n"
             f"\"content\":\n{self.content}"
         )
 
@@ -503,8 +521,8 @@ class ChunkScorePair(BaseModel):
             f"\"path\": {str(self.chunk.path)},\n"
             f"\"type\": {str(self.chunk.type)},\n"
             f"\"parent\": {self.chunk.parent},\n"
-            f"\"start_line\": {self.chunk.start_line}, "
-            f"\"end_line\": {self.chunk.end_line},\n"
+            f"\"start_char\": {self.chunk.start_char}, "
+            f"\"end_char\": {self.chunk.end_char},\n"
             f"\"content\":\n{self.chunk.content}" +
             (f"score: {self.score}" if self.score else "")
         )

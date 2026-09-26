@@ -1,14 +1,13 @@
 from pathlib import Path
 from shutil import rmtree
 from typing import Any
-from src import (get_from_json_file, create_file, create_dir,
+from src import (create_file, create_dir,
                  InputHolder,
-                 Ingestor, StrSearcher
+                 Ingestor, StrSearcher, FileSearcher
                  #  ChunkType, Chunk, ChunkRaw, ChunkScorePair
                  #  DefFunctException, ABC_Small_LLM_Model
                  )
-from .placeholders import (StrAnswerer, FileAnswerer,
-                           FileSearcher, Evaluator)
+from .placeholders import (StrAnswerer, FileAnswerer, Evaluator)
 
 
 class RAGCodeBaseLLM():
@@ -50,7 +49,7 @@ class RAGCodeBaseLLM():
                     arg_inputs.student_search_results_path, force)
                 # print(f"{self.student_search_results_path} Created")
 
-            self.dataset = get_from_json_file(arg_inputs.dataset_path)
+            # self.dataset = get_from_json_file(arg_inputs.dataset_path)
             # print(f"{arg_inputs.dataset_path} Loaded")
         else:
             raise ValueError("No Arguments were passed to the Class")
@@ -69,7 +68,7 @@ class RAGCodeBaseLLM():
 
         elif self.arg_inputs.mode == "search":
             input_dir_str = "data/processed/"
-            output_file_str = "data/search/search.txt"
+            output_file_str = "data/search/search.json"
             self._str_search(input_dir_str, output_file_str)
             print(f"Search Finished! Check in {output_file_str}")
 

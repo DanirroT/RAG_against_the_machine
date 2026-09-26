@@ -1,6 +1,3 @@
-# import sys
-# from typing import Any
-
 from src import InputHolder
 import json
 from typing import Any

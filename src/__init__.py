@@ -1,5 +1,5 @@
-from .tokenizer_sdk import Small_Tokenizer
 from .abstract_llm import ABC_Small_LLM_Model
+from .tokenizer_sdk import Small_Tokenizer
 from .holder_classes import (InputHolder, DefFunctException,
                              FileHolder, PyHolder, MDHolder, MDSections,
                              OtherHolder, FunctHolder, ClassHolder,
@@ -7,7 +7,9 @@ from .holder_classes import (InputHolder, DefFunctException,
 from .input import (val_args, get_from_json_file,
                     ft_repr, error_processing, create_dir, create_file)
 from .ingestor_class import Ingestor
-from .search_classes import StrSearcher
+from .search_classes import StrSearcher, FileSearcher
+# from .c_answer_classes import StrAnswer
+# from .d_evaluator_class import Evaluator
 from .RAG_code_base_LLM import RAGCodeBaseLLM
 # from src.validation_error_handling import error_processing
 print('\a', end="")
@@ -20,5 +22,5 @@ __all__: list[str] = [
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",
     "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException",
     "Chunk", "ChunkRaw", "ChunkScorePair", "ChunkType",
-    "Ingestor", "StrSearcher"
+    "Ingestor", "StrSearcher", "FileSearcher"
 ]

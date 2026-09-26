@@ -5,41 +5,8 @@ from pathlib import Path
 from shutil import rmtree
 from argparse import ArgumentParser
 from typing import cast
-
-# from src import InputHolder
-
-from pydantic import BaseModel, Field, model_validator
-
-
-class InputHolder(BaseModel):
-
-    mode: str = Field()
-    max_chunk_size: int = Field(gt=0, le=2000)
-    dataset_path: str = Field(min_length=1)
-    k: float = Field(gt=0)
-    save_directory: str = Field(min_length=1)
-    student_answer_path: str = Field(min_length=1)
-    max_context_length: int = Field(gt=0)
-    student_search_results_path: str = Field(min_length=1)
-    question: str = Field()
-
-    @model_validator(mode="after")
-    def validate_inputs(self) -> "InputHolder":
-        if self.mode == "answer" and not self.question:
-            raise ValueError(f"When calling the '{self.mode}' mode, a question"
-                             " must be provided as the second argument.")
-
-        try:
-            with open(self.dataset_path):
-                pass
-        except FileNotFoundError:
-            raise ValueError("File set as dataset_path does not exist:"
-                             f" {self.dataset_path}")
-
-        return (self)
-
-    def __str__(self) -> str:
-        return super().__str__()
+from src import InputHolder
+import sys
 
 
 def val_args() -> InputHolder:
@@ -47,6 +14,10 @@ def val_args() -> InputHolder:
     Function to Parse all received arguments into
     a dictionary format. specific for the Project.
     """
+
+    if sys.argv[1:] == []:
+        raise ValueError("No arguments provided. Please provide the required"
+                         " arguments.")
 
     parser = ArgumentParser()
 
@@ -57,11 +28,13 @@ def val_args() -> InputHolder:
                             "answer", "answer_dataset",
                             "evaluate"
                         ])
+    parser.add_argument("question", nargs="?", default="")
+
     parser.add_argument("--max_chunk_size", type=int, default=2000,)
     parser.add_argument("--dataset_path",
                         default=("data/datasets/UnansweredQuestions/"
                                  "dataset_docs_public.json"),)
-    parser.add_argument("--k", type=float, default=10,)
+    parser.add_argument("--k", type=int, default=10,)
     parser.add_argument("--save_directory",
                         default="data/output/search_results",)
     parser.add_argument("--student_answer_path",
@@ -71,7 +44,6 @@ def val_args() -> InputHolder:
     parser.add_argument("--student_search_results_path",
                         default=("data/output/search_results/"
                                  "dataset_docs_public.json"),)
-    parser.add_argument("--question", default="")
 
     arg_inputs = vars(parser.parse_args())
 
@@ -152,10 +124,11 @@ def val_args() -> InputHolder:
 #     return InputHolder(**inputs)  # pyright: ignore
 
 
-def get_from_json_file(file_path: str | Path) -> Any:
+def get_from_json_file(file_path: str | Path,
+                       encoding: str | None = None) -> Any:
 
     try:
-        with open(file_path) as file_obj:
+        with open(file_path, "r", encoding=encoding) as file_obj:
             output = json.load(file_obj)
     except FileNotFoundError:
         print(f"File '{file_path}' not found. "
@@ -376,15 +349,18 @@ def error_processing(error_details: list[ErrorDetails]) -> None:
         # print()
 
         error_type = error["type"]
+        if error_type == "value_error":
+            print(error["msg"])
+            return
         field = error["loc"][0]
         msg = error["msg"]
-        input = error["input"]
+        input_val = error["input"]
         get_expected = error.get("ctx")
         # print("get expected:", get_expected)
         expected = (list(get_expected.values())[0]
                     if get_expected else get_expected)
 
-        # print("unpacked:", error_type, field, msg, input, expected)
+        # print("unpacked:", error_type, field, msg, input_val, expected)
         # print()
 
         if field in ["mode", "dataset_path", "save_directory",
@@ -392,14 +368,14 @@ def error_processing(error_details: list[ErrorDetails]) -> None:
                      "question"]:
             expected = cast(str, expected)
             str_error(error_type, field, msg,
-                      input, expected)  # pyright: ignore
+                      input_val, expected)  # pyright: ignore
         elif field in ["max_chunk_size", "max_context_length"]:
             expected = cast(int, expected)
             int_error(error_type, field, msg,
-                      input, expected)  # pyright: ignore
+                      input_val, expected)  # pyright: ignore
         elif field in ["k"]:
             expected = cast(float, expected)
             float_error(error_type, field, msg,
-                        input, expected)  # pyright: ignore
+                        input_val, expected)  # pyright: ignore
         else:
             print("Unknown error:", error)

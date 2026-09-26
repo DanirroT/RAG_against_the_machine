@@ -1,39 +1,38 @@
-import sys
-from src import (RAGCodeBaseLLM, InputHolder)
-# from src import (val_args, RAGCodeBaseLLM, error_processing)
-# from pydantic import ValidationError
+from src import (InputHolder)
+from src import (val_args, RAGCodeBaseLLM, error_processing)
+from pydantic_core import ValidationError
 
 
-def main(args: list[str]) -> None:
+def main() -> None:
 
-    # try:
-    #     arg_inputs = val_args(args)
-    # except ValidationError as e:
-    #     error_processing(e.errors())
-    #     return
-    # except ValueError as e:
-    #     print(f"Arguments passed incorrectly: {e}")
-    #     return
-
-    arg_inputs: InputHolder = InputHolder(
-        # mode="index",
-        mode="search",
-        # mode="search_dataset",
-        # mode="answer",
-        # mode="answer_dataset",
-        # mode="evaluate",
-        max_chunk_size=2000,
-        dataset_path=("data/datasets/UnansweredQuestions/"
-                      "dataset_docs_public.json"),
-        k=10,
-        save_directory="data/output/search_results",
-        student_answer_path=("data/output/search_results/"
-                             "dataset_docs_public.json"),
-        max_context_length=2000,
-        student_search_results_path=("data/output/search_results/"
-                                     "dataset_docs_public.json"),
-        question="what are the Imports for inputs"
-    )
+    try:
+        arg_inputs = val_args()
+    except ValidationError as e:
+        error_processing(e.errors())
+        return
+    except (ValueError, SystemExit) as e:
+        print(f"Arguments passed incorrectly: {e}")
+        # return
+        arg_inputs = InputHolder(
+            # mode="index",
+            mode="search",
+            # mode="search_dataset",
+            # mode="answer",
+            # mode="answer_dataset",
+            # mode="evaluate",
+            max_chunk_size=2000,
+            dataset_path=("data/datasets/UnansweredQuestions/"
+                          "dataset_docs_public.json"),
+            k=10,
+            save_directory="data/output/search_results",
+            student_answer_path=("data/output/search_results/"
+                                 "dataset_docs_public.json"),
+            max_context_length=2000,
+            student_search_results_path=("data/output/search_results/"
+                                         "dataset_docs_public.json"),
+            question="what are the Imports for inputs"
+        )
+        print(f"Using Preset:\n{arg_inputs}\n\n")
 
     try:
         RAGCodeBaseLLM(arg_inputs, False)
@@ -75,6 +74,6 @@ def main(args: list[str]) -> None:
 
 if __name__ == "__main__":
     try:
-        main(sys.argv[1:])
+        main()
     except KeyboardInterrupt:
         print("\rThe program has been forcefully stopped")

@@ -6,7 +6,7 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/09/12 20:49:47 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/09/26 21:42:02 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,7 +28,23 @@ RM = rm -fr
 .ONESHELL:
 
 run:
-	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
+	@$(UV_RUN) $(SRC)
+# 	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
+
+QUESTION = "what are the Imports for inputs"
+
+run_full:
+	@echo "\nRunning all modes:\n"
+# 	@echo "\nIndexing:"
+# 	@$(UV_RUN) $(SRC) index
+	@echo "\nSearching:"
+# 	@$(UV_RUN) $(SRC) search $(QUESTION)
+	@$(UV_RUN) $(SRC) search_dataset
+#	@echo "\nAnswering:"
+#	@$(UV_RUN) $(SRC) answer
+#	#	@$(UV_RUN) $(SRC) answer_dataset
+#	#	@echo "\nEvaluating:"
+#	#	@$(UV_RUN) $(SRC) evaluate
 
 NOW = $(shell date +%m-%d_%H:%M)
 

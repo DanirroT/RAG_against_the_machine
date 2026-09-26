@@ -2,11 +2,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
-from src.tokenizer_sdk import Small_Tokenizer
 
 if TYPE_CHECKING:
     import torch
-    from transformers import (PreTrainedModel)
+    from transformers import (PreTrainedModel,
+                              TokenizersBackend, SentencePieceBackend)
+    # from src._tokenizer_sdk import Small_Tokenizer
 
 
 class ABC_Small_LLM_Model(ABC):
@@ -23,7 +24,8 @@ class ABC_Small_LLM_Model(ABC):
     _model_name: str
     _device: str
     _dtype: torch.dtype
-    _tokenizer: Small_Tokenizer
+    _tokenizer: (
+        "ABC_Small_LLM_Model | TokenizersBackend | SentencePieceBackend")
     _model: PreTrainedModel | None
 
     @abstractmethod
@@ -48,7 +50,7 @@ class ABC_Small_LLM_Model(ABC):
     @abstractmethod
     def decode(self, ids: list[int]) -> str:
         """Inverse of :py:meth:`encode`. Removes special tokens."""
-        return self._tokenizer.decode(ids)
+        return str(self._tokenizer.decode(ids))
 
     @abstractmethod
     def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:
