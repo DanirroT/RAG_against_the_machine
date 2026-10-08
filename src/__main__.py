@@ -15,9 +15,9 @@ def main() -> None:
         # return
         arg_inputs = InputHolder(
             # mode="index",
-            mode="search",
+            # mode="search",
             # mode="search_dataset",
-            # mode="answer",
+            mode="answer",
             # mode="answer_dataset",
             # mode="evaluate",
             max_chunk_size=2000,
@@ -30,9 +30,9 @@ def main() -> None:
             max_context_length=2000,
             student_search_results_path=("data/output/search_results/"
                                          "dataset_docs_public.json"),
-            question="what are the Imports for inputs"
+            question="what are the Imports for inputs?"
         )
-        print(f"Using Preset:\n{arg_inputs}\n\n")
+        print(f"Using Preset:\n\n{arg_inputs}")
 
     try:
         RAGCodeBaseLLM(arg_inputs, False)

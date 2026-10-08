@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import torch
-    from transformers import (PreTrainedModel,
-                              TokenizersBackend, SentencePieceBackend)
+    from transformers import PreTrainedModel
+    #   TokenizersBackend, SentencePieceBackend)
     # from src._tokenizer_sdk import Small_Tokenizer
 
 
@@ -24,8 +24,8 @@ class ABC_Small_LLM_Model(ABC):
     _model_name: str
     _device: str
     _dtype: torch.dtype
-    _tokenizer: (
-        "ABC_Small_LLM_Model | TokenizersBackend | SentencePieceBackend")
+    # _tokenizer: (
+    #     "ABC_Small_LLM_Model | TokenizersBackend | SentencePieceBackend")
     _model: PreTrainedModel | None
 
     @abstractmethod
@@ -45,12 +45,14 @@ class ABC_Small_LLM_Model(ABC):
         """
         Tokenize *text* and return the vector (list of integers).
         """
-        return self._tokenizer.encode(text)
+        pass
+        # return self._tokenizer.encode(text)
 
     @abstractmethod
     def decode(self, ids: list[int]) -> str:
         """Inverse of :py:meth:`encode`. Removes special tokens."""
-        return str(self._tokenizer.decode(ids))
+        pass
+        # return str(self._tokenizer.decode(ids))
 
     @abstractmethod
     def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:

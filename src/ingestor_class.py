@@ -1,12 +1,16 @@
+from __future__ import annotations
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 import json
 import ast
 from markdown_it import MarkdownIt
 from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
                  OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkRaw,
-                 ChunkType, Small_Tokenizer)
+                 ChunkType)
 from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from .tokenizer_sdk import Small_Tokenizer
 
 
 class Ingestor():
@@ -633,7 +637,7 @@ class Ingestor():
         """
         for chunk in chunks:
             nb_splits = 1
-            input("\n\n")
+         -   input("\n\n")
             chuck_header = chunk.to_vector(self._tokenizer, "h")
             chunk_vector = self._tokenizer.encode(chunk.content)
             chunk_header_len = len(chuck_header)
@@ -679,6 +683,7 @@ class Ingestor():
 
     def _load_llm(self) -> None:
 
+        from .tokenizer_sdk import Small_Tokenizer
         self._tokenizer = Small_Tokenizer()
 
         self.llm_files = self._tokenizer.get_path_to_model_files()

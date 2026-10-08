@@ -2,7 +2,9 @@ from dotenv import load_dotenv
 from pathlib import Path
 import torch
 from transformers import (AutoModelForCausalLM, PreTrainedModel)
-from src import ABC_Small_LLM_Model, Small_Tokenizer
+from src import ABC_Small_LLM_Model
+from .tokenizer_sdk import Small_Tokenizer
+import httpx
 
 
 # logging.set_verbosity_error()  # keep the console clean
@@ -65,19 +67,54 @@ class Small_LLM_Model(ABC_Small_LLM_Model):
                      else torch.float32)
         self._dtype = dtype
 
-        self._model = (
-            AutoModelForCausalLM.from_pretrained(
-                model_name,
-                torch_dtype=self._dtype,
-                device_map="auto" if self._device == "cuda" else None,
-                trust_remote_code=trust_remote_code,
-            ))
-        # self._model.to(self._device)
-        # self._model.eval()
+        try:
+            self._model = (
+                AutoModelForCausalLM.from_pretrained(  # pyright: ignore
+                    model_name,
+                    dtype=self._dtype,
+                    device_map="auto" if self._device == "cuda" else None,
+                    trust_remote_code=trust_remote_code,
+                ))
+            # self._model.to(self._device)
+            # self._model.eval()
 
-        # switch to inference-only mode
-        for p in self._model.parameters():
-            p.requires_grad = False
+            # switch to inference-only mode
+            for p in self._model.parameters():
+                p.requires_grad = False
+
+            tokens = self.encode("test")
+            self.get_logits_from_input_ids(tokens)
+
+            # print(self._tokenizer._tokenizer.special_tokens_map)
+            # {'eos_token': '<|im_end|>', 'pad_token': '<|endoftext|>'}
+
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "Small_LLM_Model was not found. "
+                f"Make sure it is installed and try again.\n{e}")
+        except httpx.ConnectError as e:
+            raise httpx.ConnectError(
+                "Small_LLM_Model was unable to Connect. "
+                f"Check Connection and Try again another time\n{e}")
+        except torch.AcceleratorError:
+            print(f"\nDefault Loading ({self._device}) has failed\n"
+                  "Reloading LLM using the device as 'cpu'\n")
+
+            self._device = "cpu"
+
+            self._model = (
+                AutoModelForCausalLM.from_pretrained(  # pyright: ignore
+                    model_name,
+                    dtype=self._dtype,
+                    device_map=None,
+                    trust_remote_code=trust_remote_code,
+                ))
+            # self._model.to(self._device)
+            # self._model.eval()
+
+            # switch to inference-only mode
+            for p in self._model.parameters():
+                p.requires_grad = False
 
     def encode(self, text: str) -> list[int]:
         """

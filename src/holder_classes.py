@@ -1,4 +1,5 @@
 from enum import Enum
+import uuid
 from pydantic import BaseModel, Field, model_validator
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -78,7 +79,18 @@ class InputHolder(BaseModel):
         return (self)
 
     def __str__(self) -> str:
-        return super().__str__()
+        return (
+            f"mode: {self.mode}\n"
+            f"max_chunk_size: {self.max_chunk_size}\n"
+            f"dataset_path: {self.dataset_path}\n"
+            f"k: {self.k}\n"
+            f"save_directory: {self.save_directory}\n"
+            f"student_answer_path: {self.student_answer_path}\n"
+            f"max_context_length: {self.max_context_length}\n"
+            "student_search_results_path: "
+            f"{self.student_search_results_path}\n"
+            f"question: {self.question}\n"
+        )
 
 
 class FileHolder(ABC):
@@ -463,7 +475,7 @@ class ChunkRaw(BaseModel):
                              "'C' 'h' 'a'")
 
 
-class Chunk(BaseModel):
+class Chunk(BaseModel):  # Equivalent to MinimalSource
     id: str = Field(min_length=1)
     path: str = Field(min_length=1)
     type: str
@@ -480,6 +492,13 @@ class Chunk(BaseModel):
     #         raise ValueError("A method chunk must have a parent class.")
 
     #     return (self)
+
+    def to_simple_dict(self) -> dict[str, str | int]:
+        return {
+            "file_path": str(self.path),
+            "first_character_index": self.start_char,
+            "last_character_index": self.end_char
+        }
 
     def to_dict(self) -> dict[str, Any]:
 
@@ -526,3 +545,32 @@ class ChunkScorePair(BaseModel):
             f"\"content\":\n{self.chunk.content}" +
             (f"score: {self.score}" if self.score else "")
         )
+
+    def to_simple_dict(self) -> dict[str, str | int]:
+        return self.chunk.to_simple_dict()
+
+
+class UnansweredQuestion(BaseModel):
+    question_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()))
+    question: str = Field(min_length=1)
+
+
+class AnsweredQuestion(UnansweredQuestion):
+    sources: list[Chunk] = Field(min_length=1)
+    answer: str = Field(min_length=1)
+
+
+class RagDataset(BaseModel):
+    rag_questions: list[AnsweredQuestion | UnansweredQuestion] = (
+        Field(min_length=1))
+
+
+class MinimalSearchResults(BaseModel):
+    question_id: str = Field(min_length=1)
+    question: str = Field(min_length=1)
+    retrieved_sources: list[Chunk] = Field(min_length=1)
+
+
+class MinimalAnswer(MinimalSearchResults):
+    answer: str = Field(min_length=1)

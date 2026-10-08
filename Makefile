@@ -6,7 +6,7 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/09/26 21:42:02 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/10/07 14:55:34 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -31,7 +31,7 @@ run:
 	@$(UV_RUN) $(SRC)
 # 	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
 
-QUESTION = "what are the Imports for inputs"
+QUESTION = "what are the Imports for inputs?"
 
 run_full:
 	@echo "\nRunning all modes:\n"

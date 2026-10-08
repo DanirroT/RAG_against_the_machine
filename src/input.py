@@ -76,7 +76,7 @@ def val_args() -> InputHolder:
 #         raise ValueError(f"Unknown First Argument: {args[1]}\n"
 #                        "Must be: 'ingest', 'search', 'answer' or 'evaluate'")
 
-#     inputs: dict[str, str] = {
+#  -   inputs: dict[str, str] = {
 #         "mode": mode,
 #         "max_chunk_size": "2000",
 #         "dataset_path": ("data/datasets/UnansweredQuestions/"
@@ -96,12 +96,12 @@ def val_args() -> InputHolder:
 #     for arg in args[1:]:
 
 #         if next_ins:
-#             inputs[next_ins] = arg
+#          -   inputs[next_ins] = arg
 #             next_ins = None
 #             continue
 
 #         elif arg is args[2] and inputs["mode"] == "answer":
-#             inputs["question"] = arg
+#          -   inputs["question"] = arg
 
 #         elif arg in ["--max_chunk_size", "--dataset_path", "--k",
 #                      "--save_directory", "--student_answer_path",
@@ -325,7 +325,7 @@ def bool_error(error_type: str, field: str, msg: str, input_raw: bool) -> None:
 # def date_error(error_type: str, field: str, msg: str, input_raw: date,
 #                expected: str | None) -> None:
 
-#     input_processed = input_raw
+#  -   input_processed = input_raw
 
 #     if error_type == "date_from_datetime_parsing":
 #         print(f"'{field}' must be a valid date. Got {input_processed}")
