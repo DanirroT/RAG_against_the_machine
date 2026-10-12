@@ -229,12 +229,29 @@ class StrAnswer():
 
         # input("\aLLM Loaded. Press Enter to Continue...")
 
-        chunk_context = self._llm.encode("Context to answer:\n")
+        chunk_context = self._llm.encode(
+            "You are a question-answering assistant. "
+            "Answer the user's question using only the provided context."
+            "\nRelevant context to answer:\n")
 
         context_separator = self._llm.encode("\n\n")
 
         context_prompt_separator = self._llm.encode(
-            "According to the context, Answer the following question:\n")
+            "Extra instruction:\n"
+            "- Write the answer as plain, natural-language prose.\n"
+            "- Do not use square brackets, lists, or placeholders."
+            "- When asked for multiple items, name the actual items separated"
+            " by commas, using 'and' before the final item."
+            "- Never describe what the answer should contain,"
+            " provide the actual answer."
+            "- The answer should be short and concise. "
+            "Do not repeat or rephrase the question.\n"
+            "- Terminate your answer with a '.\\n'.\n\n"
+            "According to the context above, Answer the following question:\n")
+
+        post_question_prompt = self._llm.encode(
+            "\n\nFinal Answer: "
+        )
 
         self.instructions = chunk_context
 
@@ -244,13 +261,13 @@ class StrAnswer():
 
         self.instructions += context_prompt_separator
 
-        self.instructions += self._llm.encode(self.arg_inputs.question
-                                              + "\n\n")
+        self.instructions += (self._llm.encode(
+            self.arg_inputs.question) + post_question_prompt)
 
         instructions_len = len(self.instructions)
 
-        print(f"\aInstructions:\n\n{self._llm.decode(self.instructions)}\")
-        print(f"\nInstructions Length: {instructions_len}\n")
+        print(f"\aInstructions:\n\n{self._llm.decode(self.instructions)}")
+        print(f"\n\nInstructions Length: {instructions_len}\n")
 
         added_tokens = self.instructions
 
@@ -260,11 +277,24 @@ class StrAnswer():
 
             logit_results = self._llm.get_logits_from_input_ids(added_tokens)
 
+            # logit_results[25] -= 2  # ':'
+            logit_results[2509] -= 3  # " ['"
+            logit_results[508] -= 3  # ' ['
+            logit_results[364] -= 3  # " '"
+
             added_tokens.append(logit_results.index(max(logit_results)))
 
             answer_str += self._llm.decode([added_tokens[-1]])
 
             print(f"\nCurrent Answer:\n{repr(answer_str)}\n")
+
+            for i in range(5):
+                max_ = max(logit_results)
+                index_ = logit_results.index(max_)
+                print(f"Logit n{i+1}: {index_:6} -> "
+                      f"{repr(self._llm.decode([index_]))},\tval: {max_}")
+                logit_results[index_] = float("-inf")
+            print()
 
             if len(added_tokens) - instructions_len > 100:
                 # Stop if the answer is too long
@@ -272,9 +302,11 @@ class StrAnswer():
                                      "... [Answer truncated due to length]")
                 break
 
-            if ".\n" in answer_str:
-                end_str = answer_str.find(".\n") + 1
-                self.final_answer = answer_str[:end_str]
+            finisher = ".\n"
+
+            if finisher in answer_str:
+                end_str = answer_str.find(finisher) + len(finisher)
+                self.final_answer = answer_str[:end_str].strip()
                 break
 
         print(f"\nFinal Answer:\n{repr(self.final_answer)}\n")

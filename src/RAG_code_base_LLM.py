@@ -1,6 +1,6 @@
 from pathlib import Path
 from shutil import rmtree
-from typing import Any
+# from typing import Any
 from src import (create_file, create_dir,
                  InputHolder,
                  Ingestor, StrSearcher, FileSearcher, StrAnswer
@@ -23,26 +23,9 @@ class RAGCodeBaseLLM():
 
     def __init__(self, arg_inputs: InputHolder, mode: bool = True) -> None:
 
-        force = True
+        self.force_create = True
 
-        if arg_inputs:
-            # print("arg_inputs Exists")
-
-            if arg_inputs.mode in ["search_dataset", "answer_dataset"]:
-                self.save_directory = create_dir(
-                    arg_inputs.save_directory, force)
-                # print(f"{self.save_directory} Created")
-
-            # if arg_inputs.mode == "answer":
-            #     self.student_answer_path = create_file(
-            #         arg_inputs.student_answer_path, force)
-            #     print(f"{self.student_answer_path} Created")
-
-            if arg_inputs.mode == "search":
-                self.student_search_results_path = create_file(
-                    arg_inputs.student_search_results_path, force)
-                # print(f"{self.student_search_results_path} Created")
-        else:
+        if not arg_inputs:
             raise ValueError("No Arguments were passed to the Class")
 
         self.arg_inputs = arg_inputs
@@ -71,7 +54,7 @@ class RAGCodeBaseLLM():
 
         elif self.arg_inputs.mode == "answer":
             input_dir_str = "data/processed/"
-            output_file_str = "data/answer/answer.txt"
+            output_file_str = "data/answer/answer.json"
             self._str_answer(input_dir_str, output_file_str)
             print(f"Answer Provided! Check in {output_file_str}")
 
@@ -115,7 +98,7 @@ class RAGCodeBaseLLM():
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_file_str)
 
-        create_file(output_dir_path, force=True)
+        create_file(output_dir_path, force=self.force_create)
 
         StrSearcher(input_dir_path, output_dir_path, self.arg_inputs)
 
@@ -123,7 +106,7 @@ class RAGCodeBaseLLM():
 
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_file_str)
-        create_file(output_dir_path, force=True)
+        create_file(output_dir_path, force=self.force_create)
 
         FileSearcher(input_dir_path, output_dir_path, self.arg_inputs)
 
@@ -131,7 +114,7 @@ class RAGCodeBaseLLM():
 
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_file_str)
-        create_file(output_dir_path, force=True)
+        create_file(output_dir_path, force=self.force_create)
 
         StrAnswer(input_dir_path, output_dir_path, self.arg_inputs)
 
@@ -141,7 +124,7 @@ class RAGCodeBaseLLM():
 
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_file_str)
-        create_file(output_dir_path, force=True)
+        create_file(output_dir_path, force=self.force_create)
 
         FileAnswerer(input_dir_path, output_dir_path, self.arg_inputs)
 

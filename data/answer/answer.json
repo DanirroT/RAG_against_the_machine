@@ -1,0 +1,42 @@
+{
+    "search_results": [
+        {
+            "question_id": "Q7815010216044447518",
+            "question": "what are the Imports for inputs?",
+            "retrieved_sources": [
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 5569,
+                    "last_character_index": 6573
+                },
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 5720,
+                    "last_character_index": 6274
+                },
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 6276,
+                    "last_character_index": 6573
+                },
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 0,
+                    "last_character_index": 113
+                },
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 2471,
+                    "last_character_index": 3622
+                },
+                {
+                    "file_path": "data/to_process/input.py",
+                    "first_character_index": 3625,
+                    "last_character_index": 5047
+                }
+            ],
+            "answer": "The imports for inputs are: typing.Any, pathlib.Path, shutil.rmtree."
+        }
+    ],
+    "k": 10
+}
