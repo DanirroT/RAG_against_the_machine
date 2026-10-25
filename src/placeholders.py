@@ -3,12 +3,12 @@ import json
 from typing import Any
 from src import (InputHolder, Chunk,
                  #  ChunkType,
-                 ABC_Small_LLM_Model)
+                 Small_LLM_ModelBaseProtocol)
 
 
 class FileSearcher():
 
-    _llm: ABC_Small_LLM_Model
+    _llm: Small_LLM_ModelBaseProtocol
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -66,7 +66,7 @@ class FileSearcher():
 
 class StrAnswerer():
 
-    _llm: ABC_Small_LLM_Model
+    _llm: Small_LLM_ModelBaseProtocol
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -124,7 +124,7 @@ class StrAnswerer():
 
 class FileAnswerer():
 
-    _llm: ABC_Small_LLM_Model
+    _llm: Small_LLM_ModelBaseProtocol
     database: list[Chunk]
     arg_inputs: InputHolder
 
@@ -182,7 +182,7 @@ class FileAnswerer():
 
 class Evaluator():
 
-    _llm: ABC_Small_LLM_Model
+    _llm: Small_LLM_ModelBaseProtocol
     database: list[Chunk]
     arg_inputs: InputHolder
 

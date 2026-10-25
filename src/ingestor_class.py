@@ -29,34 +29,47 @@ class Ingestor():
                  arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
-        self.input_dir_path = input_dir_path
-        self.output_dir_path = output_dir_path
 
-        self._load_all_files(self.input_dir_path)
+        self._load_all_files(input_dir_path)
 
         # print("current output\n\n")
 
-        # print("\n".join(map(str, self.ingest_out)))
+        # print("FileHolders", "\n".join(map(str, self.ingest_out)))
 
-        # def process(self) -> None:
+        # for output in self.ingest_out:
+        #     if "README.md" in str(output.path):
+        #         print(output)
 
         self._load_llm()
 
+        print("\nLLm loaded\n")
+
         self.ingest_out_flattened = self.flatten_file_holders()
 
-        # print("flattened output:")
+        # print("\nFiles Flattened\n")
 
         # for output in self.ingest_out_flattened:
-        #     print("\n\n", output)
+        #     if "README.md" in str(output.path):
+        #         print(output)
+
+        # print("flattened output:")
+        # print("\n\n", output)
 
         # def print(self) -> None:
 
         last_path: Path | None = None
 
-        for obj in self.ingest_out_flattened:
-            current_path = (self.output_dir_path /
+        print_chunks: list[Chunk] | tqdm[Chunk] = self.ingest_out_flattened
+
+        print("\nIndexing to", output_dir_path)
+
+        if len(print_chunks) > 500:
+            print_chunks = tqdm(print_chunks)
+
+        for obj in print_chunks:
+            current_path = (output_dir_path /
                             Path(obj.path).relative_to(
-                                self.input_dir_path)).with_suffix(
+                                input_dir_path)).with_suffix(
                                     Path(obj.path).suffix + ".json")
 
             # print("path:\t", current_path,
@@ -91,18 +104,25 @@ class Ingestor():
 
         files: list[Path] | tqdm[Path] = list(input_dir_path.rglob("*"))
 
-        if len(files) > 50:
+        print("\nLoading Files from:", input_dir_path)
+
+        if len(files) > 500:
             files = tqdm(files)
 
-        print("\nLoading Files from:", input_dir_path)
         for path in files:
             # print()
-            # print(path)
-            if path.is_dir() or any(part.startswith(".")
-                                    for part in path.parts):
+            # print(path, end=" ", flush=True)
+            # if (path.is_dir() or any(part.startswith(".")
+            #         for part in path.parts if part != "..")):
+            if path.is_dir():
+                # print("skip", flush=True)
                 continue
             out_file: FileHolder
             if path.is_file():
+                if path.suffix in [".png", ".jpg", ".jpeg",
+                                   ".gif", ".bmp", ".tiff", ".ico"]:
+                    # print("skip", flush=True)
+                    continue
                 with path.open("r", encoding="utf-8") as file:
                     file_str = file.read()
                 if str(path).endswith(".py"):
@@ -167,8 +187,6 @@ class Ingestor():
                     + item.args.defaults
                 )
 
-                item.returns = cast(ast.expr, item.returns)
-
                 funct = FunctHolder(
                     path, item.name, item.lineno,
                     item.end_lineno
@@ -182,7 +200,8 @@ class Ingestor():
                         )
                         for arg, default
                         in zip(args, defaults)
-                    ], str(ast.unparse(item.returns)),
+                    ], str(ast.unparse(item.returns))
+                    if item.returns else "Undefined",
                     str(ast.get_source_segment(file_str, item)),
                     str(ast.get_docstring(item))
                 )
@@ -214,8 +233,6 @@ class Ingestor():
                             + class_item.args.defaults
                         )
 
-                        class_item.returns = cast(ast.expr, class_item.returns)
-
                         class_object.methods.append(
                             FunctHolder(
                                 path, class_item.name, class_item.lineno,
@@ -231,7 +248,8 @@ class Ingestor():
                                     for arg, default
                                     in zip(args, defaults)
                                 ],
-                                str(ast.unparse(class_item.returns)),
+                                str(ast.unparse(class_item.returns))
+                                if class_item.returns else "Undefined",
                                 str(ast.get_source_segment(file_str,
                                                            class_item)),
                                 str(ast.get_docstring(class_item))
@@ -254,6 +272,9 @@ class Ingestor():
         md_parse = MarkdownIt()
 
         out_file = MDHolder(path)
+        out_file.introduction = MDSections(
+            path, "introduction", 1, 1, "0", 0, "",
+        )
         md_parsed = md_parse.parse(file_str)
 
         waiting_heading: bool = False
@@ -269,12 +290,9 @@ class Ingestor():
                 waiting_heading = True
                 tag = token.tag
                 continue
-            if token.type in ["paragraph_close",
-                              "paragraph_open",
-                              "heading_close"]:
+            if (token.type in ["paragraph_open"] or
+                    token.map is None):
                 continue
-
-            token.map = cast(list[int], token.map)
 
             if waiting_heading:
                 if len(token.map) == 2:
@@ -315,22 +333,13 @@ class Ingestor():
 
             else:
                 # Text before the first heading
+                out_file.introduction.content += token.content
                 if len(token.map) == 2:
-                    section = MDSections(
-                        path, "introduction",
-                        token.map[0]+1, token.map[1]+1,
-                        tag, int(tag), token.content,
-                    )
+                    out_file.introduction.end_line = token.map[1] + 1
                 elif len(token.map) == 1:
-                    section = MDSections(
-                        path, "introduction",
-                        token.map[0]+1, token.map[0]+1,
-                        tag, int(tag), token.content,
-                    )
+                    out_file.introduction.end_line = token.map[0] + 1
                 else:
-                    section = MDSections(path, "introduction",
-                                         -1, -1, tag, int(tag), token.content)
-                out_file.introduction = section
+                    out_file.introduction.end_line = -1
 
             # input(out_file)
             # print()
@@ -349,20 +358,21 @@ class Ingestor():
 
     def flatten_file_holders(self) -> list[Chunk]:
 
-        file_holders = self.ingest_out.copy()
-
         flattened_chunks: list[ChunkRaw] = []
 
         last_path: Path = Path("")
         line_char_dict: dict[int, int] = {}
 
-        holders: list[FileHolder] | tqdm[FileHolder] = list(file_holders)
-
-        if len(holders) > 100:
-            holders = tqdm(holders)
+        holders: list[FileHolder] | tqdm[FileHolder] = self.ingest_out.copy()
 
         print("\nFlattening Files...")
+
+        if len(holders) > 500:
+            holders = tqdm(holders)
+
         for file_holder in holders:
+
+            # print(f"\nFlattening: {file_holder}", end="\n\n")
 
             if file_holder.path != last_path:
                 line_char_dict = self.get_line_char_dict(file_holder.path)
@@ -381,13 +391,23 @@ class Ingestor():
 
             elif isinstance(file_holder, MDHolder):
 
-                # print()
+                # print(file_holder)
                 # print(line_char_dict)
                 # print()
 
-                # input(file_holder)
+                if (file_holder.introduction and
+                        file_holder.introduction.content.strip()):
+                    # print(file_holder.introduction)
 
-                if file_holder.introduction:
+                    # print(
+                    #     f"id={file_holder.path.stem}.introduction,\n"
+                    #     f"path={file_holder.path},\n"
+                    #     "start_char="
+                    #     f"{line_char_dict[file_holder.introduction.start_line]},\n"
+                    #     "end_char="
+                    #     f"{line_char_dict[file_holder.introduction.end_line+1]-1}"
+                    #     f",\ncontent={file_holder.introduction.content}"
+                    #     )
                     flattened_chunks.append(
                         ChunkRaw(
                             id=f"{file_holder.path.stem}.introduction",
@@ -410,7 +430,18 @@ class Ingestor():
                 counter = 0
                 start_char = 0
                 for section in file_holder.sections:
+
+                    if not section.strip():
+                        continue
+
                     end_char = (start_char + len(section) - 1)
+                    # print(
+                    #     f"id=other.{file_holder.path.stem}.section.{counter},\n"
+                    #     f"path={file_holder.path},\n"
+                    #     f"start_char={start_char},\n"
+                    #     f"end_char={end_char},\n"
+                    #     f"content={section}\n"
+                    # )
                     flattened_chunks.append(
                         ChunkRaw(
                             id=(f"other.{file_holder.path.stem}."
@@ -519,9 +550,24 @@ class Ingestor():
         flattened_chunks: list[ChunkRaw] = []
 
         for section in md_holder:
+            # print(section)
+
+            # print(f"id={section.path.stem}.section."
+            #       f"{section.name.replace(' ', '_')},\n"
+            #       f"path={section.path},\n"
+            #       f"start_char={line_char_dict[section.start_line]},\n"
+            #       f"end_char={line_char_dict[section.end_line + 1] - 1},\n"
+            #       f"content={section.content}"
+            #       )
+            if section.children:
+                section.content += ("\n\nChildren Sections: " + " ".join(
+                    [child.name for child in section.children]))
+            if not section.content.strip():
+                continue
             flattened_chunks.append(
                 ChunkRaw(
-                    id=f"{section.path.stem}.section.{section.name}",
+                    id=f"{section.path.stem}.section.{
+                        section.name.replace(' ', '_')}",
                     path=section.path,
                     type=ChunkType.SECTION,
                     parent=None,

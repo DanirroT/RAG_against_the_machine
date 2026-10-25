@@ -1,22 +1,22 @@
 from pathlib import Path
 from shutil import rmtree
 # from typing import Any
-from src import (create_file, create_dir,
-                 InputHolder,
-                 Ingestor, StrSearcher, FileSearcher, StrAnswer
+from src import (create_file, create_dir, InputHolder,
+                 Ingestor, StrSearcher,
+                 FileSearcher, StrAnswer, FileAnswer
                  #  ChunkType, Chunk, ChunkRaw, ChunkScorePair
-                 #  DefFunctException, ABC_Small_LLM_Model
+                 #  DefFunctException, Small_LLM_ModelBaseProtocol
                  )
-from .placeholders import (FileAnswerer, Evaluator)
+from .placeholders import (Evaluator)
 
 
 class RAGCodeBaseLLM():
 
     arg_inputs: InputHolder
 
-    save_directory: Path
-    student_answer_path: Path
-    student_search_results_path: Path
+    # save_directory: Path
+    # student_answer_path: Path
+    # student_search_results_path: Path
 
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
@@ -32,7 +32,8 @@ class RAGCodeBaseLLM():
 
         if self.arg_inputs.mode == "index":
             # input_dir_str = self.dataset
-            input_dir_str = "data/to_process/"
+            # input_dir_str = "data/to_process/"
+            input_dir_str = "../vllm-0.10.1/"
             # output_dir_str = save_directory
             output_dir_str = "data/processed/"
 
@@ -48,7 +49,8 @@ class RAGCodeBaseLLM():
 
         elif self.arg_inputs.mode == "search_dataset":
             input_dir_str = "data/processed/"
-            output_file_str = "data/search/StudentSearchResults.json"
+            # output_file_str = "data/search/StudentSearchResults.json"
+            output_file_str = self.arg_inputs.student_search_results_path
             self._file_search(input_dir_str, output_file_str)
             print(f"Search Finished! Check in {output_file_str}")
 
@@ -88,8 +90,7 @@ class RAGCodeBaseLLM():
         if not input_dir_path.is_dir():
             raise ValueError(f"Path '{input_dir_str}' is not a Directory")
 
-        output_dir_path = Path(output_dir_str)
-        output_dir_path.mkdir(parents=True)
+        output_dir_path = create_dir(output_dir_str, self.force_create)
 
         Ingestor(input_dir_path, output_dir_path, self.arg_inputs)
 
@@ -120,19 +121,15 @@ class RAGCodeBaseLLM():
 
     def _file_answer(self, input_dir_str: str, output_file_str: str) -> None:
 
-        pass
-
         input_dir_path = Path(input_dir_str)
         output_dir_path = Path(output_file_str)
         create_file(output_dir_path, force=self.force_create)
 
-        FileAnswerer(input_dir_path, output_dir_path, self.arg_inputs)
+        FileAnswer(input_dir_path, output_dir_path, self.arg_inputs)
 
     def _evaluate(self, code_questions_str: str, docs_questions_str: str,
                   code_answers_str: str, docs_answers_str: str,
                   output_dir_str: str) -> None:
-
-        pass
 
         code_questions_file = Path(code_questions_str)
         docs_questions_file = Path(docs_questions_str)

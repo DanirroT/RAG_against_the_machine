@@ -1,0 +1,494 @@
+All Imports done
+
+
+Loading Ingested Database from: data/processed
+100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3021/3021 [00:15<00:00, 195.31it/s]
+
+Loading weights: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 311/311 [00:13<00:00, 23.79it/s]
+What HTTP endpoint is used to dynamically load a LoRA adapter in vLLM?
+File 'data/output/search_results/dataset_docs_public.json' not found. Please create the file and try again.
+
+Gathering Chunks for: What HTTP endpoint is used to dynamically load a LoRA adapter in vLLM?
+k database got
+
+Generating Answer for Question ID: 17526382-7764-4120-b5e8-2d3726b8a4da
+
+
+Current Answer:
+' The'
+
+Logit n1:    576 -> ' The',     val: 18.692123413085938
+Logit n2:     17 -> '2',        val: 17.78006935119629
+Logit n3:     16 -> '1',        val: 17.75560188293457
+Logit n4:   1124 -> ' \\',      val: 17.360740661621094
+Logit n5:    659 -> ' .',       val: 17.15226936340332
+
+
+Current Answer:
+' The HTTP'
+
+Logit n1:  10130 -> ' HTTP',    val: 20.605854034423828
+Logit n2:   5333 -> ' API',     val: 16.151329040527344
+Logit n3:  14887 -> ' endpoint',        val: 14.960474967956543
+Logit n4:    348 -> ' v',       val: 14.710325241088867
+Logit n5:   1758 -> ' http',    val: 14.65186595916748
+
+
+Current Answer:
+' The HTTP endpoint'
+
+Logit n1:  14887 -> ' endpoint',        val: 26.019916534423828
+Logit n2:  36342 -> ' endpoints',       val: 21.916643142700195
+Logit n3:    835 -> ' end',     val: 17.103626251220703
+Logit n4:  47269 -> ' Endpoint',        val: 15.807999610900879
+Logit n5:   1681 -> ' request', val: 15.592778205871582
+
+
+Current Answer:
+' The HTTP endpoint used'
+
+Logit n1:   1483 -> ' used',    val: 22.26755142211914
+Logit n2:    374 -> ' is',      val: 20.682262420654297
+Logit n3:    369 -> ' for',     val: 20.361047744750977
+Logit n4:    311 -> ' to',      val: 20.099285125732422
+Logit n5:    429 -> ' that',    val: 18.171274185180664
+
+
+Current Answer:
+' The HTTP endpoint used to'
+
+Logit n1:    311 -> ' to',      val: 24.49320411682129
+Logit n2:    374 -> ' is',      val: 20.940078735351562
+Logit n3:    369 -> ' for',     val: 19.83448028564453
+Logit n4:    304 -> ' in',      val: 15.797788619995117
+Logit n5:    553 -> ' by',      val: 14.44691276550293
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically'
+
+Logit n1:  42011 -> ' dynamically',     val: 25.635683059692383
+Logit n2:   2795 -> ' load',    val: 19.586605072021484
+Logit n3:   8741 -> ' dynamic', val: 17.38981819152832
+Logit n4:  17544 -> ' dynam',   val: 16.16864585876465
+Logit n5:   3070 -> ' **',      val: 14.668052673339844
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load'
+
+Logit n1:   2795 -> ' load',    val: 30.316020965576172
+Logit n2:   8277 -> ' loading', val: 17.526714324951172
+Logit n3:  49386 -> '\tload',   val: 17.30362319946289
+Logit n4:   8893 -> ' Load',    val: 17.011667251586914
+Logit n5:  49092 -> '(load',    val: 16.959936141967773
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a'
+
+Logit n1:    264 -> ' a',       val: 23.681406021118164
+Logit n2:    279 -> ' the',     val: 17.032756805419922
+Logit n3:   6485 -> ' Lo',      val: 16.705413818359375
+Logit n4:    458 -> ' an',      val: 15.060490608215332
+Logit n5:    323 -> ' and',     val: 13.893141746520996
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a Lo'
+
+Logit n1:   6485 -> ' Lo',      val: 24.86211395263672
+Logit n2:   4262 -> 'Lo',       val: 15.565787315368652
+Logit n3:    444 -> ' L',       val: 15.170166969299316
+Logit n4:   4929 -> ' La',      val: 14.99032211303711
+Logit n5:  21359 -> ' Loop',    val: 13.855379104614258
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA'
+
+Logit n1:   5609 -> 'RA',       val: 32.42873001098633
+Logit n2:     49 -> 'R',        val: 20.54088592529297
+Logit n3:  55535 -> 'Ra',       val: 19.95394515991211
+Logit n4:  33905 -> 'RAM',      val: 19.109310150146484
+Logit n5:   5049 -> 'CA',       val: 18.118764877319336
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter'
+
+Logit n1:  12956 -> ' adapter', val: 26.57973861694336
+Logit n2:  28807 -> ' Adapter', val: 19.787736892700195
+Logit n3:  42534 -> '(adapter', val: 16.806453704833984
+Logit n4:   5940 -> 'Adapter',  val: 16.50992774963379
+Logit n5:    374 -> ' is',      val: 16.060646057128906
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in'
+
+Logit n1:    304 -> ' in',      val: 23.50090980529785
+Logit n2:    374 -> ' is',      val: 22.302528381347656
+Logit n3:    369 -> ' for',     val: 14.832633972167969
+Logit n4:    389 -> ' on',      val: 14.23229694366455
+Logit n5:    518 -> ' at',      val: 13.869112968444824
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in v'
+
+Logit n1:    348 -> ' v',       val: 24.335451126098633
+Logit n2:    647 -> ' V',       val: 15.948603630065918
+Logit n3:    279 -> ' the',     val: 15.62387466430664
+Logit n4:   3070 -> ' **',      val: 14.989705085754395
+Logit n5:    444 -> ' L',       val: 13.769609451293945
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLL'
+
+Logit n1:   4086 -> 'LL',       val: 33.97742462158203
+Logit n2:     43 -> 'L',        val: 22.160842895507812
+Logit n3:    654 -> 'll',       val: 21.655261993408203
+Logit n4:  93881 -> '\tLL',     val: 18.689348220825195
+Logit n5:  89329 -> '(LL',      val: 18.20147132873535
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM'
+
+Logit n1:     44 -> 'M',        val: 33.892372131347656
+Logit n2:  21634 -> 'Ms',       val: 21.191572189331055
+Logit n3:   2668 -> 'ML',       val: 18.873497009277344
+Logit n4:     76 -> 'm',        val: 18.791749954223633
+Logit n5:   4826 -> 'MS',       val: 18.279611587524414
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is'
+
+Logit n1:    374 -> ' is',      val: 24.25545883178711
+Logit n2:    525 -> ' are',     val: 14.747286796569824
+Logit n3:    646 -> ' can',     val: 14.255273818969727
+Logit n4:     11 -> ',',        val: 13.302393913269043
+Logit n5:    702 -> ' has',     val: 13.204065322875977
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http'
+
+Logit n1:   1758 -> ' http',    val: 18.42234992980957
+Logit n2:   1565 -> ' `',       val: 18.19835090637207
+Logit n3:    279 -> ' the',     val: 17.199695587158203
+Logit n4:    608 -> ' /',       val: 16.87056541442871
+Logit n5:  37301 -> ' `/',      val: 16.767192840576172
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://'
+
+Logit n1:   1110 -> '://',      val: 26.256452560424805
+Logit n2:     25 -> ':',        val: 17.73945426940918
+Logit n3:  14375 -> ':/',       val: 17.421375274658203
+Logit n4:  15325 -> ':\\/\\/',  val: 17.3868350982666
+Logit n5:  23817 -> ':\\\\',    val: 16.58572769165039
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost'
+
+Logit n1:   8301 -> 'localhost',        val: 24.72513198852539
+Logit n2:     16 -> '1',        val: 18.661298751831055
+Logit n3:   8687 -> 'example',  val: 18.531848907470703
+Logit n4:     58 -> '[',        val: 18.32083511352539
+Logit n5:   2438 -> 'local',    val: 17.894071578979492
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:'
+
+Logit n1:     25 -> ':',        val: 29.39491081237793
+Logit n2:   7259 -> ':[',       val: 16.69434928894043
+Logit n3:   7533 -> ':%',       val: 16.239307403564453
+Logit n4:  76475 -> ':?',       val: 15.963480949401855
+Logit n5:  66963 -> ':**',      val: 15.425309181213379
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8'
+
+Logit n1:     23 -> '8',        val: 27.976346969604492
+Logit n2:     24 -> '9',        val: 18.676040649414062
+Logit n3:     22 -> '7',        val: 15.682653427124023
+Logit n4:     19 -> '4',        val: 15.604086875915527
+Logit n5:     18 -> '3',        val: 15.221200942993164
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:80'
+
+Logit n1:     15 -> '0',        val: 29.897668838500977
+Logit n2:     16 -> '1',        val: 17.007843017578125
+Logit n3:     23 -> '8',        val: 16.731204986572266
+Logit n4:     24 -> '9',        val: 16.277984619140625
+Logit n5:     19 -> '4',        val: 16.239696502685547
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:800'
+
+Logit n1:     15 -> '0',        val: 28.60894775390625
+Logit n2:     23 -> '8',        val: 18.966224670410156
+Logit n3:     24 -> '9',        val: 17.737314224243164
+Logit n4:     16 -> '1',        val: 16.626054763793945
+Logit n5:     17 -> '2',        val: 15.626465797424316
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000'
+
+Logit n1:     15 -> '0',        val: 27.997276306152344
+Logit n2:     16 -> '1',        val: 17.465892791748047
+Logit n3:     23 -> '8',        val: 17.39048957824707
+Logit n4:     24 -> '9',        val: 15.982665061950684
+Logit n5:     17 -> '2',        val: 15.40423583984375
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v'
+
+Logit n1:   5457 -> '/v',       val: 25.059709548950195
+Logit n2:    624 -> '.\n',      val: 16.97275161743164
+Logit n3:  10508 -> '/api',     val: 16.6321964263916
+Logit n4:     13 -> '.',        val: 16.472335815429688
+Logit n5:  52649 -> ':v',       val: 16.14211082458496
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1'
+
+Logit n1:     16 -> '1',        val: 29.769420623779297
+Logit n2:     17 -> '2',        val: 18.429838180541992
+Logit n3:     18 -> '3',        val: 16.276718139648438
+Logit n4:     72 -> 'i',        val: 15.43587875366211
+Logit n5:    654 -> 'll',       val: 15.391828536987305
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1/load'
+
+Logit n1:  71896 -> '/load',    val: 28.355453491210938
+Logit n2:  49092 -> '(load',    val: 19.700721740722656
+Logit n3:  49008 -> '-load',    val: 18.34113883972168
+Logit n4:   2795 -> ' load',    val: 17.900447845458984
+Logit n5:  13328 -> '/l',       val: 17.893861770629883
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1/load_l'
+
+Logit n1:    907 -> '_l',       val: 29.853862762451172
+Logit n2:   2852 -> '-l',       val: 22.583208084106445
+Logit n3:     75 -> 'l',        val: 16.89779281616211
+Logit n4:   2351 -> '_L',       val: 16.469934463500977
+Logit n5:  13328 -> '/l',       val: 16.25216293334961
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1/load_lora'
+
+Logit n1:   6215 -> 'ora',      val: 36.20404052734375
+Logit n2:    269 -> 'or',       val: 23.88128662109375
+Logit n3:  64647 -> 'oras',     val: 22.70881462097168
+Logit n4:   5059 -> 'ara',      val: 20.84184455871582
+Logit n5:  54404 -> 'oran',     val: 20.322017669677734
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1/load_lora_adapter'
+
+Logit n1:  43682 -> '_adapter', val: 27.351337432861328
+Logit n2:  36699 -> '_endpoint',        val: 17.984655380249023
+Logit n3:  28807 -> ' Adapter', val: 17.692272186279297
+Logit n4:  10027 -> '_ad',      val: 17.627904891967773
+Logit n5:     13 -> '.',        val: 16.34404182434082
+
+
+Current Answer:
+' The HTTP endpoint used to dynamically load a LoRA adapter in vLLM is http://localhost:8000/v1/load_lora_adapter.\n'
+
+Logit n1:    624 -> '.\n',      val: 20.038928985595703
+Logit n2:     13 -> '.',        val: 19.294048309326172
+Logit n3:   7110 -> '.\\',      val: 18.667951583862305
+Logit n4:  16448 -> ' .\n',     val: 15.825407981872559
+Logit n5:    382 -> '.\n\n',    val: 15.718659400939941
+
+What command can be used to evaluate the accuracy of a quantized model using lm_eval with vLLM?
+File 'data/output/search_results/dataset_docs_public.json' not found. Please create the file and try again.
+
+Gathering Chunks for: What command can be used to evaluate the accuracy of a quantized model using lm_eval with vLLM?
+k database got
+
+Generating Answer for Question ID: cc83c230-099f-4c11-aeab-8c09715c5942
+
+
+Current Answer:
+'1'
+
+Logit n1:     16 -> '1',        val: 18.535903930664062
+Logit n2:    659 -> ' .',       val: 17.673072814941406
+Logit n3:   1124 -> ' \\',      val: 17.30782127380371
+Logit n4:     17 -> '2',        val: 16.897058486938477
+Logit n5:     15 -> '0',        val: 16.389476776123047
+
+
+Current Answer:
+'1,'
+
+Logit n1:     11 -> ',',        val: 17.127592086791992
+Logit n2:     13 -> '.',        val: 16.059734344482422
+Logit n3:     17 -> '2',        val: 15.526124954223633
+Logit n4:    198 -> '\n',       val: 14.96407699584961
+Logit n5:     15 -> '0',        val: 14.813276290893555
+
+
+Current Answer:
+'1,2'
+
+Logit n1:     17 -> '2',        val: 18.834562301635742
+Logit n2:    220 -> ' ',        val: 17.820619583129883
+Logit n3:     18 -> '3',        val: 17.399370193481445
+Logit n4:    323 -> ' and',     val: 16.68160057067871
+Logit n5:     19 -> '4',        val: 16.50249481201172
+
+
+Current Answer:
+'1,2,'
+
+Logit n1:     11 -> ',',        val: 20.40683364868164
+Logit n2:    198 -> '\n',       val: 17.345714569091797
+Logit n3:  26266 -> ',\\',      val: 17.185251235961914
+Logit n4:     13 -> '.',        val: 16.317729949951172
+Logit n5:     18 -> '3',        val: 16.31243896484375
+
+
+Current Answer:
+'1,2,3'
+
+Logit n1:     18 -> '3',        val: 21.759958267211914
+Logit n2:     19 -> '4',        val: 20.1195011138916
+Logit n3:     20 -> '5',        val: 18.31770133972168
+Logit n4:    323 -> ' and',     val: 18.21170425415039
+Logit n5:     21 -> '6',        val: 17.35636329650879
+
+
+Current Answer:
+'1,2,3,'
+
+Logit n1:     11 -> ',',        val: 19.736675262451172
+Logit n2:  26266 -> ',\\',      val: 17.614892959594727
+Logit n3:    198 -> '\n',       val: 17.18206024169922
+Logit n4:     13 -> '.',        val: 16.26634407043457
+Logit n5:   7110 -> '.\\',      val: 16.158493041992188
+
+
+Current Answer:
+'1,2,3,4'
+
+Logit n1:     19 -> '4',        val: 22.488319396972656
+Logit n2:    323 -> ' and',     val: 19.062042236328125
+Logit n3:     20 -> '5',        val: 18.42683219909668
+Logit n4:     21 -> '6',        val: 16.952526092529297
+Logit n5:     22 -> '7',        val: 16.142383575439453
+
+
+Current Answer:
+'1,2,3,4,'
+
+Logit n1:     11 -> ',',        val: 19.207395553588867
+Logit n2:    198 -> '\n',       val: 17.15530014038086
+Logit n3:  26266 -> ',\\',      val: 16.971302032470703
+Logit n4:    659 -> ' .',       val: 16.781152725219727
+Logit n5:   7110 -> '.\\',      val: 16.413320541381836
+
+
+Current Answer:
+'1,2,3,4,5'
+
+Logit n1:     20 -> '5',        val: 22.84914779663086
+Logit n2:    323 -> ' and',     val: 19.016376495361328
+Logit n3:     21 -> '6',        val: 18.613670349121094
+Logit n4:     22 -> '7',        val: 16.610252380371094
+Logit n5:     19 -> '4',        val: 16.10308837890625
+
+
+Current Answer:
+'1,2,3,4,5,'
+
+Logit n1:     11 -> ',',        val: 19.097492218017578
+Logit n2:  26266 -> ',\\',      val: 17.099681854248047
+Logit n3:    198 -> '\n',       val: 17.040250778198242
+Logit n4:    659 -> ' .',       val: 16.874725341796875
+Logit n5:   7110 -> '.\\',      val: 16.514432907104492
+
+
+Current Answer:
+'1,2,3,4,5,6'
+
+Logit n1:     21 -> '6',        val: 23.065635681152344
+Logit n2:    323 -> ' and',     val: 18.361095428466797
+Logit n3:     22 -> '7',        val: 17.784330368041992
+Logit n4:     20 -> '5',        val: 16.84515380859375
+Logit n5:     16 -> '1',        val: 16.211103439331055
+
+
+Current Answer:
+'1,2,3,4,5,6,'
+
+Logit n1:     11 -> ',',        val: 20.69565200805664
+Logit n2:    198 -> '\n',       val: 17.768095016479492
+Logit n3:   1699 -> '\\n',      val: 17.556535720825195
+Logit n4:    659 -> ' .',       val: 17.12753677368164
+Logit n5:  26266 -> ',\\',      val: 16.841596603393555
+
+
+Current Answer:
+'1,2,3,4,5,6,7'
+
+Logit n1:     22 -> '7',        val: 23.005582809448242
+Logit n2:    323 -> ' and',     val: 18.197162628173828
+Logit n3:     23 -> '8',        val: 18.115047454833984
+Logit n4:     21 -> '6',        val: 17.21898651123047
+Logit n5:     16 -> '1',        val: 16.961729049682617
+
+
+Current Answer:
+'1,2,3,4,5,6,7,'
+
+Logit n1:     11 -> ',',        val: 21.280664443969727
+Logit n2:    198 -> '\n',       val: 17.686687469482422
+Logit n3:  26266 -> ',\\',      val: 17.23552703857422
+Logit n4:   1699 -> '\\n',      val: 16.957834243774414
+Logit n5:    659 -> ' .',       val: 16.083406448364258
+
+
+Current Answer:
+'1,2,3,4,5,6,7,8'
+
+Logit n1:     23 -> '8',        val: 23.428058624267578
+Logit n2:    323 -> ' and',     val: 18.302871704101562
+Logit n3:     24 -> '9',        val: 17.44927215576172
+Logit n4:     16 -> '1',        val: 16.96542739868164
+Logit n5:     20 -> '5',        val: 16.011470794677734
+
+
+Current Answer:
+'1,2,3,4,5,6,7,8,'
+
+Logit n1:     11 -> ',',        val: 21.528047561645508
+Logit n2:  26266 -> ',\\',      val: 17.756669998168945
+Logit n3:    198 -> '\n',       val: 17.57679557800293
+Logit n4:   1699 -> '\\n',      val: 16.885578155517578
+Logit n5:    323 -> ' and',     val: 16.329761505126953
+
+The program has been forcefully stopped

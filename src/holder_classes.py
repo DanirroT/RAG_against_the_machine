@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 # from enum import Enum
 from typing import Any
-from src import (ABC_Small_LLM_Model)
+from src import (Small_LLM_ModelBaseProtocol)
 
 
 class InputHolder(BaseModel):
@@ -453,7 +453,7 @@ class ChunkRaw(BaseModel):
             "content": self.content,
         }
 
-    def to_vector(self, llm: ABC_Small_LLM_Model, mode: str = "c"
+    def to_vector(self, llm: Small_LLM_ModelBaseProtocol, mode: str = "c"
                   ) -> list[int]:
         if mode == "h":
             return llm.encode(f"id: {self.id}\n"
@@ -475,23 +475,10 @@ class ChunkRaw(BaseModel):
                              "'C' 'h' 'a'")
 
 
-class Chunk(BaseModel):  # Equivalent to MinimalSource
-    id: str = Field(min_length=1)
+class MinimalSource(BaseModel):
     path: str = Field(min_length=1)
-    type: str
-    parent: str | None = Field(default=None)
     start_char: int = Field(ge=-1)
     end_char: int = Field(ge=-1)
-    content: str = Field(min_length=1)
-    content_vector: list[int] = Field(min_length=1)
-
-    # @model_validator(mode="after")
-    # def validate_inputs(self) -> "Chunk":
-
-    #     if self.type == ChunkType.METHOD and not self.parent:
-    #         raise ValueError("A method chunk must have a parent class.")
-
-    #     return (self)
 
     def to_simple_dict(self) -> dict[str, str | int]:
         return {
@@ -499,6 +486,14 @@ class Chunk(BaseModel):  # Equivalent to MinimalSource
             "first_character_index": self.start_char,
             "last_character_index": self.end_char
         }
+
+
+class Chunk(MinimalSource):  # Equivalent to MinimalSource
+    id: str = Field(min_length=1)
+    type: str
+    parent: str | None = Field(default=None)
+    content: str = Field(min_length=1)
+    content_vector: list[int] = Field(min_length=1)
 
     def to_dict(self) -> dict[str, Any]:
 
@@ -557,7 +552,7 @@ class UnansweredQuestion(BaseModel):
 
 
 class AnsweredQuestion(UnansweredQuestion):
-    sources: list[Chunk] = Field(min_length=1)
+    sources: list[MinimalSource] = Field(default=[])
     answer: str = Field(min_length=1)
 
 
@@ -567,10 +562,52 @@ class RagDataset(BaseModel):
 
 
 class MinimalSearchResults(BaseModel):
-    question_id: str = Field(min_length=1)
+    question_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()))
     question: str = Field(min_length=1)
-    retrieved_sources: list[Chunk] = Field(min_length=1)
+    retrieved_sources: list[MinimalSource] = Field(default=[])
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "question_id": self.question_id,
+            "question": self.question,
+            "retrieved_sources": [source.to_simple_dict()
+                                  for source in self.retrieved_sources]
+        }
 
 
 class MinimalAnswer(MinimalSearchResults):
     answer: str = Field(min_length=1)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "question_id": self.question_id,
+            "question": self.question,
+            "retrieved_sources": [source.to_simple_dict()
+                                  for source in self.retrieved_sources],
+            "answer": self.answer
+        }
+
+
+class StudentSearchResults(BaseModel):
+    search_results: list[MinimalSearchResults] = Field(default=[])
+    k: int = Field(ge=0)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "search_results": [result.to_dict()
+                               for result in self.search_results],
+            "k": self.k
+        }
+
+
+class StudentSearchResultsAndAnswer(BaseModel):
+    search_results: list[MinimalAnswer] = Field(default=[])
+    k: int = Field(ge=0)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "search_results": [result.to_dict()
+                               for result in self.search_results],
+            "k": self.k
+        }

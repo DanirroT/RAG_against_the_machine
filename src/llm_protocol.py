@@ -1,16 +1,9 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import torch
-    from transformers import PreTrainedModel
-    #   TokenizersBackend, SentencePieceBackend)
-    # from src._tokenizer_sdk import Small_Tokenizer
+from typing import Protocol
 
 
-class ABC_Small_LLM_Model(ABC):
+class Small_LLM_ModelBaseProtocol(Protocol):
     """
     Lightweight abstract base class for a small LLM model.
 
@@ -22,25 +15,9 @@ class ABC_Small_LLM_Model(ABC):
     """
 
     _model_name: str
-    _device: str
-    _dtype: torch.dtype
     # _tokenizer: (
     #     "ABC_Small_LLM_Model | TokenizersBackend | SentencePieceBackend")
-    _model: PreTrainedModel | None
 
-    @abstractmethod
-    def __init__(
-        self,
-        mode: bool = True,
-        model_name: str = "Qwen/Qwen3-0.6B",
-        *,
-        device: str | None = None,
-        dtype: torch.dtype | None = None,
-        trust_remote_code: bool = True,
-    ) -> None:
-        pass
-
-    @abstractmethod
     def encode(self, text: str) -> list[int]:
         """
         Tokenize *text* and return the vector (list of integers).
@@ -48,16 +25,13 @@ class ABC_Small_LLM_Model(ABC):
         pass
         # return self._tokenizer.encode(text)
 
-    @abstractmethod
     def decode(self, ids: list[int]) -> str:
         """Inverse of :py:meth:`encode`. Removes special tokens."""
         pass
         # return str(self._tokenizer.decode(ids))
 
-    @abstractmethod
-    def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:
+    def get_path_to_model_files(self) -> dict[str, Path]:
         pass
 
-    @abstractmethod
-    def get_path_to_model_files(self) -> dict[str, Path]:
+    def get_logits_from_input_ids(self, input_ids: list[int]) -> list[float]:
         pass

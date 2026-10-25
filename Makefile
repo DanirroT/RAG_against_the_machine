@@ -6,7 +6,7 @@
 #    By: dmota-ri <dmota-ri@student.42lisboa.com    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2026/04/10 16:50:27 by dmota-ri          #+#    #+#              #
-#    Updated: 2026/10/07 14:55:34 by dmota-ri         ###   ########.fr        #
+#    Updated: 2026/10/25 21:06:33 by dmota-ri         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -27,9 +27,42 @@ RM = rm -fr
 
 .ONESHELL:
 
-run:
-	@$(UV_RUN) $(SRC)
-# 	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS))
+index:
+	@$(UV_RUN) $(SRC) index
+index_run_time:
+	@time -f "\n\nTotal Run Time: %E" $(UV_RUN) $(SRC) index
+
+search:
+	@$(UV_RUN) $(SRC) search $(filter-out $@,$(MAKECMDGOALS))
+
+search_dataset:
+	@$(UV_RUN) $(SRC) search_dataset
+
+answer:
+	@$(UV_RUN) $(SRC) answer $(filter-out $@,$(MAKECMDGOALS))
+
+answer_dataset:
+	@$(UV_RUN) $(SRC) answer_dataset
+
+evaluate:
+	@$(UV_RUN) $(SRC) evaluate
+
+ARGS = answer_dataset
+NOW = $(shell date +%m-%d_%H:%M)
+
+logs:
+	@mkdir -p logs
+
+record: logs
+
+	@touch logs/$(NOW).log
+	@$(UV_RUN) $(SRC) $(ARGS) 2>&1 | tee "logs/$(NOW).log"
+	@echo "\n\nOutput_file:\n\n"
+
+# record:
+# 	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS)) | tee Historic/$(NOW).log
+# 	@echo "\n\nOutput_file:\n\n" >> Historic/$(NOW).log
+# 	@cat data/output/function_calls.json >> Historic/$(NOW).log
 
 QUESTION = "what are the Imports for inputs?"
 
@@ -46,12 +79,6 @@ run_full:
 #	#	@echo "\nEvaluating:"
 #	#	@$(UV_RUN) $(SRC) evaluate
 
-NOW = $(shell date +%m-%d_%H:%M)
-
-record:
-	@$(UV_RUN) $(SRC) $(filter-out $@,$(MAKECMDGOALS)) | tee Historic/$(NOW).log
-	@echo "\n\nOutput_file:\n\n" >> Historic/$(NOW).log
-	@cat data/output/function_calls.json >> Historic/$(NOW).log
 
 #  2>&1
 debug:

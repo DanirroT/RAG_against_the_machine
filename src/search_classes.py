@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Any
 from src import (InputHolder, ChunkScorePair, Chunk,
                  get_from_json_file,
-                 UnansweredQuestion, AnsweredQuestion)
+                 UnansweredQuestion, MinimalSearchResults,
+                 StudentSearchResults)
 from math import log, e, sqrt
 from tqdm import tqdm
 import json
@@ -44,35 +45,45 @@ class StrSearcher():
 
         files: list[Path] | tqdm[Path] = list(ingest_database_path.rglob("*"))
 
+        print("\nLoading Ingested Database from:", ingest_database_path)
         if len(files) > 50:
             files = tqdm(files)
 
-        print("\nLoading Ingested Database from:", ingest_database_path)
         for path in files:
             # print()
             # print(path)
-            new_file: list[dict[str, Any]] = (
-                get_from_json_file(path))
-            add_chunks: list[ChunkScorePair] = []
-            for chunk in new_file:
-                # print()
-                # print(chunk)
-                # print()
-                id: str = chunk["id"]
-                chunk_path: str = chunk["path"]
-                type: str = chunk["type"]
-                parent: str = chunk["parent"]
-                start_char: int = chunk["start_char"]
-                end_char: int = chunk["end_char"]
-                content: str = chunk["content"]
-                vector: list[int] = chunk["vector"]
-                add_chunks.append(ChunkScorePair(id=id, chunk=Chunk(
-                    id=id, path=chunk_path, type=type, parent=parent,
-                    start_char=start_char, end_char=end_char,
-                    content=content, content_vector=vector), score=0))
-                # print()
-                # print(add_chunks[-1])
-                # print()
+            if path.is_dir():
+                # print("skip", flush=True)
+                continue
+            elif path.is_file():
+                if path.suffix in [".png", ".jpg", ".jpeg",
+                                   ".gif", ".bmp", ".tiff", ".ico"]:
+                    # print("skip", flush=True)
+                    continue
+                new_file: list[dict[str, Any]] = (
+                    get_from_json_file(path))
+                add_chunks: list[ChunkScorePair] = []
+                for chunk in new_file:
+                    # print()
+                    # print(chunk)
+                    # print()
+                    id: str = chunk["id"]
+                    chunk_path: str = chunk["path"]
+                    type: str = chunk["type"]
+                    parent: str = chunk["parent"]
+                    start_char: int = chunk["start_char"]
+                    end_char: int = chunk["end_char"]
+                    content: str = chunk["content"]
+                    vector: list[int] = chunk["vector"]
+                    add_chunks.append(ChunkScorePair(id=id, chunk=Chunk(
+                        id=id, path=chunk_path, type=type, parent=parent,
+                        start_char=start_char, end_char=end_char,
+                        content=content, content_vector=vector), score=0))
+                    # print()
+                    # print(add_chunks[-1])
+                    # print()
+            else:
+                continue
 
             database_ingest_out += add_chunks
 
@@ -112,10 +123,10 @@ class StrSearcher():
 
         values: list[set[str]] | tqdm[set[str]] = list(complex_query.values())
 
+        print("\nGathering Chunks for:", question, "\n")
         if len(values) > 1000:
             values = tqdm(values)
 
-        print("\nGathering Chunks for:", question, "\n")
         for variants in values:
 
             chunks_containing_q = sum(
@@ -232,34 +243,23 @@ class StrSearcher():
         #     search_file.write(to_print + f"\tID: {chunk.chunk.id} - "
         #                       f"Score: {chunk.score}\n")
         #     print(to_print)
-        retrieved_sources: list[dict[str, str | int]] = []
-        for chunk in self.k_database:
-            to_print = (f"{chunk.chunk.path} "
-                        f"[{chunk.chunk.start_char}:"
-                        f"{chunk.chunk.end_char}]")
-            retrieved_sources.append({
-                "file_path": chunk.chunk.path,
-                "first_character_index": chunk.chunk.start_char,
-                "last_character_index": chunk.chunk.end_char
 
-            })
-            print(to_print)
+        retrieved_sources = MinimalSearchResults(
+            question=question, retrieved_sources=[
+                sr.chunk for sr in self.k_database])
+
+        print("\n".join(
+            [f"{chunk.path} [{chunk.start_char}:{chunk.end_char}]"
+             for chunk in retrieved_sources.retrieved_sources]))
         print()
 
         try:
 
             with ((self.output_file_path).open("w") as search_file):
-                json.dump({
-                    "search_results": [
-                        {
-                            "question_id": (
-                                f"Q{hash(question)}"),
-                            "question": question,
-                            "retrieved_sources": retrieved_sources
-                        }
-                    ],
-                    "k": self.arg_inputs.k
-                }, search_file, indent=4)
+                json.dump(StudentSearchResults(
+                    k=self.arg_inputs.k, search_results=[
+                        retrieved_sources]).to_dict(),
+                        search_file, indent=4)
 
         except FileNotFoundError:
             print(f"Output file '{self.output_file_path}' not found. "
@@ -269,7 +269,7 @@ class StrSearcher():
 class FileSearcher():
 
     database: list[ChunkScorePair]
-    k_database_list: list[AnsweredQuestion]
+    k_database_list: list[MinimalSearchResults]
     arg_inputs: InputHolder
     output_file_path: Path
 
@@ -293,21 +293,19 @@ class FileSearcher():
             self.questions_list
         )
 
+        print("\nGathering Chunks for all questions")
         if len(questions_dict_values) * len(self.database) > 1000:
             questions_dict_values = tqdm(questions_dict_values)
 
-        print("\nGathering Chunks for all questions")
-
         for questions_dict in questions_dict_values:
             self.k_database_list.append(
-                AnsweredQuestion(
+                MinimalSearchResults(
                     question_id=questions_dict.question_id,
                     question=questions_dict.question,
-                    sources=[x.chunk for x in
-                             self.gen_k_database(questions_dict.question)],
-                    answer="NoAnswer"
-                )
-                )
+                    retrieved_sources=[
+                        x.chunk for x in
+                        self.gen_k_database(questions_dict.question)]
+                ))
 
             # print(f"\nTop {self.arg_inputs.k} results for query: "
             #       f"'{questions_dict["question"]}'\n")
@@ -335,35 +333,45 @@ class FileSearcher():
 
         files: list[Path] | tqdm[Path] = list(ingest_database_path.rglob("*"))
 
+        print(f"\nLoading Ingested Database from: {ingest_database_path}")
         if len(files) > 50:
             files = tqdm(files)
 
-        print(f"\nLoading Ingested Database from: {ingest_database_path}")
         for path in files:
             # print()
             # print(path)
-            new_file: list[dict[str, Any]] = (
-                get_from_json_file(path))
-            add_chunks: list[ChunkScorePair] = []
-            for chunk in new_file:
-                # print()
-                # print(chunk)
-                # print()
-                id: str = chunk["id"]
-                chunk_path: str = chunk["path"]
-                type: str = chunk["type"]
-                parent: str = chunk["parent"]
-                start_char: int = chunk["start_char"]
-                end_char: int = chunk["end_char"]
-                content: str = chunk["content"]
-                vector: list[int] = chunk["vector"]
-                add_chunks.append(ChunkScorePair(id=id, chunk=Chunk(
-                    id=id, path=chunk_path, type=type, parent=parent,
-                    start_char=start_char, end_char=end_char,
-                    content=content, content_vector=vector), score=0))
-                # print()
-                # print(add_chunks[-1])
-                # print()
+            if path.is_dir():
+                # print("skip", flush=True)
+                continue
+            elif path.is_file():
+                if path.suffix in [".png", ".jpg", ".jpeg",
+                                   ".gif", ".bmp", ".tiff", ".ico"]:
+                    # print("skip", flush=True)
+                    continue
+                new_file: list[dict[str, Any]] = (
+                    get_from_json_file(path))
+                add_chunks: list[ChunkScorePair] = []
+                for chunk in new_file:
+                    # print()
+                    # print(chunk)
+                    # print()
+                    id: str = chunk["id"]
+                    chunk_path: str = chunk["path"]
+                    type: str = chunk["type"]
+                    parent: str = chunk["parent"]
+                    start_char: int = chunk["start_char"]
+                    end_char: int = chunk["end_char"]
+                    content: str = chunk["content"]
+                    vector: list[int] = chunk["vector"]
+                    add_chunks.append(ChunkScorePair(id=id, chunk=Chunk(
+                        id=id, path=chunk_path, type=type, parent=parent,
+                        start_char=start_char, end_char=end_char,
+                        content=content, content_vector=vector), score=0))
+                    # print()
+                    # print(add_chunks[-1])
+                    # print()
+            else:
+                continue
 
             database_ingest_out += add_chunks
 
@@ -497,23 +505,13 @@ class FileSearcher():
 
     def print(self) -> None:
 
-        return_list: list[dict[str, str | list[dict[str, str | int]]]] = []
-        for search_result in self.k_database_list:
-
-            return_list.append({
-                "question_id": search_result.question_id,
-                "question": search_result.question,
-                "retrieved_sources": list(map(lambda x: x.to_simple_dict(),
-                                              search_result.sources))
-            })
-
+        return_list = StudentSearchResults(
+            k=self.arg_inputs.k, search_results=[
+                sr for sr in self.k_database_list])
         try:
 
             with ((self.output_file_path).open("w") as search_file):
-                json.dump({
-                    "search_results": return_list,
-                    "k": self.arg_inputs.k
-                }, search_file, indent=4)
+                json.dump(return_list.to_dict(), search_file, indent=4)
 
         except FileNotFoundError:
             print(f"Output file '{self.output_file_path}' not found. "
@@ -561,10 +559,10 @@ class FileSearcher():
             self.questions_list
         )
 
+        print("\nGathering Chunks for all questions")
         if len(questions_dict_values) * len(self.database) > 1000:
             questions_dict_values = tqdm(questions_dict_values)
 
-        print("\nGathering Chunks for all questions")
 
         for questions_dict in questions_dict_values:
             self.k_database_list.append(
@@ -587,10 +585,10 @@ class FileSearcher():
 
         files: list[Path] | tqdm[Path] = list(ingest_database_path.rglob("*"))
 
+        print(f"\nLoading Ingested Database from: {ingest_database_path}")
         if len(files) > 50:
             files = tqdm(files)
 
-        print(f"\nLoading Ingested Database from: {ingest_database_path}")
         for path in files:
             # print()
             # print(path)

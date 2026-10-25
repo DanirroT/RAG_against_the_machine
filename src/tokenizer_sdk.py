@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 from huggingface_hub import hf_hub_download
 from typing import TYPE_CHECKING, cast
-from src import ABC_Small_LLM_Model
+# from src import Small_LLM_ModelBaseProtocol
 
 if TYPE_CHECKING:
     from transformers import (TokenizersBackend, SentencePieceBackend)
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 # logging.set_verbosity_error()  # keep the console clean
 
 
-class Small_Tokenizer(ABC_Small_LLM_Model):
+class Small_Tokenizer():
     """
     Lightweight wrapper around a Hugging Face tokenizer for fast,
     low-memory experimentation.

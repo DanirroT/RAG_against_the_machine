@@ -1,4 +1,4 @@
-from .abstract_llm import ABC_Small_LLM_Model
+from .llm_protocol import Small_LLM_ModelBaseProtocol
 # from .llm_sdk import Small_LLM_Model
 # from .tokenizer_sdk import Small_Tokenizer
 from .holder_classes import (InputHolder, DefFunctException,
@@ -6,7 +6,9 @@ from .holder_classes import (InputHolder, DefFunctException,
                              OtherHolder, FunctHolder, ClassHolder,
                              Chunk, ChunkRaw, ChunkScorePair, ChunkType,
                              UnansweredQuestion, AnsweredQuestion,
-                             RagDataset, MinimalSearchResults, MinimalAnswer)
+                             RagDataset, MinimalSearchResults, MinimalAnswer,
+                             StudentSearchResults, MinimalSource,
+                             StudentSearchResultsAndAnswer)
 from .input import (val_args, get_from_json_file,
                     ft_repr, error_processing, create_dir, create_file)
 from .ingestor_class import Ingestor
@@ -19,13 +21,14 @@ print('\a', end="")
 print("All Imports done\n")
 
 __all__: list[str] = [
-    "RAGCodeBaseLLM", "ABC_Small_LLM_Model",
+    "RAGCodeBaseLLM", "Small_LLM_ModelBaseProtocol",
     "val_args", "get_from_json_file", "ft_repr", "error_processing",
     "create_file", "create_dir",
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",
     "OtherHolder", "FunctHolder", "ClassHolder", "DefFunctException",
     "Chunk", "ChunkRaw", "ChunkScorePair", "ChunkType",
     "Ingestor", "StrSearcher", "FileSearcher", "StrAnswer", "FileAnswer",
-    "UnansweredQuestion", "AnsweredQuestion",
-    "RagDataset", "MinimalSearchResults", "MinimalAnswer"
+    "UnansweredQuestion", "AnsweredQuestion", "MinimalSource",
+    "RagDataset", "MinimalSearchResults", "MinimalAnswer",
+    "StudentSearchResults", "StudentSearchResultsAndAnswer"
 ]

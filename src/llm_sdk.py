@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 import torch
 from transformers import (AutoModelForCausalLM, PreTrainedModel)
-from src import ABC_Small_LLM_Model
+# from src import Small_LLM_ModelBaseProtocol
 from .tokenizer_sdk import Small_Tokenizer
 import httpx
 
@@ -10,7 +10,7 @@ import httpx
 # logging.set_verbosity_error()  # keep the console clean
 
 
-class Small_LLM_Model(ABC_Small_LLM_Model):
+class Small_LLM_Model():
     """
     Utility class wrapping a lightweight Hugging Face causal-LM for fast,
     low-memory experimentation.

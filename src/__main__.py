@@ -1,4 +1,3 @@
-from src import (InputHolder)
 from src import (val_args, RAGCodeBaseLLM, error_processing)
 from pydantic_core import ValidationError
 
@@ -12,41 +11,43 @@ def main() -> None:
         return
     except (ValueError, SystemExit) as e:
         print(f"Arguments passed incorrectly: {e}")
-        # return
-        arg_inputs = InputHolder(
-            # mode="index",
-            # mode="search",
-            # mode="search_dataset",
-            mode="answer",
-            # mode="answer_dataset",
-            # mode="evaluate",
-            max_chunk_size=2000,
-            dataset_path=("data/datasets/UnansweredQuestions/"
-                          "dataset_docs_public.json"),
-            k=10,
-            save_directory="data/output/search_results",
-            student_answer_path=("data/output/search_results/"
-                                 "dataset_docs_public.json"),
-            max_context_length=2000,
-            student_search_results_path=("data/output/search_results/"
-                                         "dataset_docs_public.json"),
-            question="what are the Imports for inputs?"
-            # question=""
-        )
-        print(f"Using Preset:\n\n{arg_inputs}")
-
-    try:
-        RAGCodeBaseLLM(arg_inputs, False)
-        # RAGCodeBaseLLM(arg_inputs)
-
-    except (IsADirectoryError, FileExistsError):
         return
-    except FileNotFoundError as e:
-        print(f"File not found: {e}")
-        return
+        # from src import (InputHolder)
+        # arg_inputs = InputHolder(
+        #     # mode="index",
+        #     # mode="search",
+        #     # mode="search_dataset",
+        #     mode="answer",
+        #     # mode="answer_dataset",
+        #     # mode="evaluate",
+        #     max_chunk_size=2000,
+        #     dataset_path=("data/datasets/UnansweredQuestions/"
+        #                   "dataset_docs_public.json"),
+        #     k=10,
+        #     save_directory="data/output/search_results",
+        #     student_answer_path=("data/output/search_results/"
+        #                          "dataset_docs_public.json"),
+        #     max_context_length=2000,
+        #     student_search_results_path=("data/output/search_results/"
+        #                                  "dataset_docs_public.json"),
+        #     question="what are the Imports for inputs?"
+        #     # question=""
+        # )
+        # print(f"Using Preset:\n\n{arg_inputs}")
+
+    # try:
+    RAGCodeBaseLLM(arg_inputs, False)
+    # RAGCodeBaseLLM(arg_inputs)
+
     # except ValueError as e:
-    #     print(e)
+    #     print(f"Error while running RAGCodeBaseLLM: {e}")
     #     return
+    # except (IsADirectoryError, FileExistsError):
+    #     return
+    # except FileNotFoundError as e:
+    #     print(f"File not found: {e}")
+    #     return
+
     # except ModuleNotFoundError as e:
     #     print("Module Dependencies were not met:\n"
     #           f"{e}")
@@ -58,7 +59,7 @@ def main() -> None:
     # except Exception as e:
     #     print("An error has occurred while building"
     #           f" 'RAGCodeBaseLLM':\n{e}")
-        # return
+    #    return
 
     # try:
     #     funct_caller.run_model()
