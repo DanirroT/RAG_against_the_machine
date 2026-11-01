@@ -15,13 +15,13 @@ from .ingestor_class import Ingestor
 from .search_classes import StrSearcher, FileSearcher
 from .answer_classes import StrAnswer, FileAnswer
 # from .evaluator_class import Evaluator
-from .RAG_code_base_LLM import RAGCodeBaseLLM
+from .RAG_code_base_LLM import rag_code_base_llm
 # from src.validation_error_handling import error_processing
 print('\a', end="")
 print("All Imports done\n")
 
 __all__: list[str] = [
-    "RAGCodeBaseLLM", "Small_LLM_ModelBaseProtocol",
+    "rag_code_base_llm", "Small_LLM_ModelBaseProtocol",
     "val_args", "get_from_json_file", "ft_repr", "error_processing",
     "create_file", "create_dir",
     "InputHolder", "FileHolder", "PyHolder", "MDHolder", "MDSections",

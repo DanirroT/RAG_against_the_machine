@@ -1,4 +1,4 @@
-from src import (val_args, RAGCodeBaseLLM, error_processing)
+from src import (val_args, rag_code_base_llm, error_processing)
 from pydantic_core import ValidationError
 
 
@@ -9,7 +9,7 @@ def main() -> None:
     except ValidationError as e:
         error_processing(e.errors())
         return
-    except (ValueError, SystemExit) as e:
+    except ValueError as e:
         print(f"Arguments passed incorrectly: {e}")
         return
         # from src import (InputHolder)
@@ -35,43 +35,31 @@ def main() -> None:
         # )
         # print(f"Using Preset:\n\n{arg_inputs}")
 
-    # try:
-    RAGCodeBaseLLM(arg_inputs, False)
-    # RAGCodeBaseLLM(arg_inputs)
+    try:
+        rag_code_base_llm(arg_inputs, False)
+        # RAGCodeBaseLLM(arg_inputs)
 
-    # except ValueError as e:
-    #     print(f"Error while running RAGCodeBaseLLM: {e}")
-    #     return
-    # except (IsADirectoryError, FileExistsError):
-    #     return
-    # except FileNotFoundError as e:
-    #     print(f"File not found: {e}")
-    #     return
+    except ValueError as e:
+        print(f"Error while running RAGCodeBaseLLM: {e}")
+        return
+    except (IsADirectoryError, FileExistsError):
+        return
+    except FileNotFoundError as e:
+        print(f"File not found: {e}")
+        return
 
-    # except ModuleNotFoundError as e:
-    #     print("Module Dependencies were not met:\n"
-    #           f"{e}")
-    #     return
-    # except TypeError as e:
-    #     print("An error has occurred while building"
-    #           f" 'RAGCodeBaseLLM':\n{e}")
-    #     return
-    # except Exception as e:
-    #     print("An error has occurred while building"
-    #           f" 'RAGCodeBaseLLM':\n{e}")
-    #    return
-
-    # try:
-    #     funct_caller.run_model()
-    # except Exception as e:
-    #     print(f"Error while running model: {e}")
-    #     return
-
-    # try:
-    #     funct_caller.export_to_file()
-    # except FileNotFoundError as e:
-    #     print(f"Error while exporting to file: {e}")
-    #     return
+    except ModuleNotFoundError as e:
+        print("Module Dependencies were not met:\n"
+              f"{e}")
+        return
+    except TypeError as e:
+        print("An unexpected type-related error occurred while "
+              f"running 'RAGCodeBaseLLM':\n{e}")
+        return
+    except Exception as e:
+        print("An error has occurred while building"
+              f" 'RAGCodeBaseLLM':\n{e}")
+        return
 
 
 if __name__ == "__main__":
