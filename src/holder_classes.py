@@ -189,7 +189,7 @@ class FunctHolder(SectionHolder):
 class ClassHolder(SectionHolder):
 
     inherits: list[str]
-    docstring: str
+    docstring: str | None
     var_annotations: list[str]
     methods: list[FunctHolder]
 
@@ -197,13 +197,13 @@ class ClassHolder(SectionHolder):
                  name: str,
                  start_line: int,
                  end_line: int,
-                 docstring: str,
                  inherits: list[str],
+                 docstring: str | None = None,
                  var_annotations: list[str] | None = None,
                  methods: list[FunctHolder] | None = None) -> None:
         super().__init__(path, name, start_line, end_line)
-        self.docstring = docstring
         self.inherits = inherits
+        self.docstring = docstring
         self.var_annotations = (var_annotations
                                 if var_annotations is not None else [])
         self.methods = methods if methods is not None else []
@@ -243,31 +243,75 @@ class ClassHolder(SectionHolder):
         )
 
 
+class MiscHolder(SectionHolder):
+
+    body: str
+
+    def __init__(self, path: Path,
+                 name: str | None = None,
+                 start_line: int = -1,
+                 end_line: int = -1,
+                 body: str = "") -> None:
+        if name is None:
+            name = f"misc_{start_line}_{end_line}"
+        super().__init__(path, name, start_line, end_line)
+        self.body = body
+
+    def append(self, name: str | None = None,
+               end_line: int = -1,
+               body: str = "") -> None:
+        if name is not None:
+            self.name = name
+        if end_line != -1:
+            self.end_line = end_line
+        if body != "":
+            self.body += "\n" + body
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "start_line": self.start_line,
+            "end_line": self.end_line,
+            "body": self.body,
+        }
+
+    def __str__(self) -> str:
+        return (
+            f"\"name\": {self.name}\t"
+            f"start in {self.start_line}, end at {self.end_line}\n"
+            f"\"body\":\n{self.body}\n"
+        )
+
+    def extract(self) -> str:
+        return (
+            f"funct_name: {self.name}\n"
+            f"start={self.start_line}, end={self.end_line}\n"
+            f"\"body\":\n{self.body}\n"
+            f"{self.name}"
+        )
+
+
 class PyHolder(FileHolder):
     imports: list[str]
     imports_start: int
     imports_end: int
     functs: list[FunctHolder]
     classes: list[ClassHolder]
-    start_char: int
-    end_char: int
 
     def __init__(self, path: Path,
-                 start_char: int | None = None,
-                 end_char: int | None = None,
                  imports: list[str] | None = None,
                  imports_start: int | None = None,
                  imports_end: int | None = None,
                  functs: list[FunctHolder] | None = None,
-                 classes: list[ClassHolder] | None = None) -> None:
+                 classes: list[ClassHolder] | None = None,
+                 misc: list[MiscHolder] | None = None) -> None:
         super().__init__(path)
-        self.start_char = start_char if start_char is not None else -1
-        self.end_char = end_char if end_char is not None else -1
         self.imports = imports if imports is not None else []
         self.imports_start = imports_start if imports_start is not None else -1
         self.imports_end = imports_end if imports_end is not None else -1
         self.functs = functs if functs is not None else []
         self.classes = classes if classes is not None else []
+        self.misc = misc if misc is not None else []
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -288,7 +332,6 @@ class PyHolder(FileHolder):
 
 class MDSections(SectionHolder):
 
-    tag: str
     level: int
     content: str
     children: list["MDSections"]
@@ -297,19 +340,16 @@ class MDSections(SectionHolder):
                  name: str,
                  start_line: int,
                  end_line: int,
-                 tag: str,
                  level: int,
                  content: str | None = None,
                  children: list["MDSections"] | None = None) -> None:
         super().__init__(path, name, start_line, end_line)
-        self.tag = tag
         self.level = level
         self.content = content if content is not None else ""
         self.children = children if children is not None else []
 
     def __str__(self) -> str:
         return (
-            f"\"tag\":\t{self.tag}\t"
             f"\"lvl\":\t{self.level}\t"
             f"\"name\": {self.name}\t"
             f"start {self.start_line}\t"
@@ -322,7 +362,6 @@ class MDSections(SectionHolder):
 
     def to_dict(self) -> dict[str, Any]:
         return ({
-            "tag": self.tag,
             "level": self.level,
             "content": self.content,
             "children": self.children,
@@ -331,7 +370,6 @@ class MDSections(SectionHolder):
     def extract(self) -> str:
         return (
             f"section_name: {self.name}\n" +
-            f"tag:\t{self.tag}\t"
             f"lvl:\t{self.level}"
             f"\n\n\"children\":\n{'\n\n'.join(map(str, self.children))}\n"
             f"start={self.start_line}, end={self.end_line}\n"

@@ -256,7 +256,7 @@ def evaluate(arg_inputs: InputHolder,
 def rag_code_base_llm(arg_inputs: InputHolder,
                       force_create: bool = True) -> None:
 
-    if not isinstance(arg_inputs, InputHolder):
+    if not isinstance(arg_inputs, InputHolder):  # pyright: ignore
         raise ValueError("No Arguments were passed to the Class")
 
     if arg_inputs.mode == "index":

@@ -1,12 +1,12 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 import json
 import ast
 from markdown_it import MarkdownIt
-from src import (InputHolder, FileHolder, PyHolder, MDHolder, MDSections,
-                 OtherHolder, FunctHolder, ClassHolder, Chunk, ChunkRaw,
-                 ChunkType)
+from src import (InputHolder, Chunk, ChunkRaw, ChunkType,
+                 PyHolder, FunctHolder, ClassHolder, MiscHolder,
+                 MDHolder, MDSections, OtherHolder, FileHolder)
 from tqdm import tqdm
 
 if TYPE_CHECKING:
@@ -23,84 +23,14 @@ class Ingestor():
     vocab_text_int: dict[str, int]
     vocab_int_text: dict[int, str]
 
-    ingest_out: list[FileHolder]
-
     def __init__(self, input_dir_path: Path, output_dir_path: Path,
                  arg_inputs: InputHolder) -> None:
 
         self.arg_inputs = arg_inputs
 
-        self._load_all_files(input_dir_path)
-
-        # print("current output\n\n")
-
-        # print("FileHolders", "\n".join(map(str, self.ingest_out)))
-
-        # for output in self.ingest_out:
-        #     if "README.md" in str(output.path):
-        #         print(output)
-
         self._load_llm()
 
         print("\nLLm loaded\n")
-
-        self.ingest_out_flattened = self.flatten_file_holders()
-
-        # print("\nFiles Flattened\n")
-
-        # for output in self.ingest_out_flattened:
-        #     if "README.md" in str(output.path):
-        #         print(output)
-
-        # print("flattened output:")
-        # print("\n\n", output)
-
-        # def print(self) -> None:
-
-        last_path: Path | None = None
-
-        print_chunks: list[Chunk] | tqdm[Chunk] = self.ingest_out_flattened
-
-        print("\nIndexing to", output_dir_path)
-
-        if len(print_chunks) > 500:
-            print_chunks = tqdm(print_chunks)
-
-        for obj in print_chunks:
-            current_path = (output_dir_path /
-                            Path(obj.path).relative_to(
-                                input_dir_path)).with_suffix(
-                                    Path(obj.path).suffix + ".json")
-
-            # print("path:\t", current_path,
-            #       "\npath:\t", str(last_path), "\n\n")
-
-            if not last_path or str(current_path) != str(last_path):
-                # print("\t New", str(current_path), str(last_path),
-                #       str(current_path) != str(last_path))
-                current_path.parent.mkdir(parents=True, exist_ok=True)
-                if last_path:
-                    with last_path.open("a") as file:  # pyright: ignore
-                        file.write("\n]\n")
-                with current_path.open("x") as file:
-                    file.write("[\n")
-            else:
-                # print("\t Same")
-                with current_path.open("a") as file:
-                    file.write(",\n")
-            with current_path.open("a") as file:
-                json.dump(obj.to_dict(), file, indent=4,
-                          ensure_ascii=False)
-            last_path = current_path
-
-        if last_path:
-            with last_path.open("a") as file:
-                file.write("\n]")
-        # print("files created")
-
-    def _load_all_files(self, input_dir_path: Path) -> None:
-
-        self.ingest_out = []
 
         files: list[Path] | tqdm[Path] = list(input_dir_path.rglob("*"))
 
@@ -112,47 +42,133 @@ class Ingestor():
         for path in files:
             # print()
             # print(path, end=" ", flush=True)
-            # if (path.is_dir() or any(part.startswith(".")
-            #         for part in path.parts if part != "..")):
-            if path.is_dir():
+            if (path.is_dir() or any(
+                part.startswith(".") for part in path.relative_to(
+                    input_dir_path).parts if part != "..")):
+                # if path.is_dir():
                 # print("skip", flush=True)
                 continue
-            out_file: FileHolder
             if path.is_file():
-                if path.suffix in [".png", ".jpg", ".jpeg",
-                                   ".gif", ".bmp", ".tiff", ".ico"]:
+                if path.suffix.lower() in [
+                    ".png", ".ico", ".jpg", ".jpeg", ".obj",
+                    ".stl", ".mp4", ".mp3", ".wav", ".so",
+                        ".gif", ".bmp", ".tiff", ".o", ".bin"]:
                     # print("skip", flush=True)
                     continue
-                with path.open("r", encoding="utf-8") as file:
-                    file_str = file.read()
-                if str(path).endswith(".py"):
-                    out_file = self.parse_py(path, file_str)
-                elif str(path).endswith(".md"):
-                    out_file = self.parse_md(path, file_str)
-                else:
-                    out_file = OtherHolder(path)
-                    file_sections = file_str.split("\n\n")
+                # if not (path.suffix.lower() in [
+                #   ".py", ".md", ".txt", "", ".json"]):
+                #     # print("skip", flush=True)
+                #     continue
 
-                    out_file.sections = ([
-                        line + "\n\n"
-                        for line in file_sections[:-1]] +
-                        [file_sections[-1]])
+                output_path = (
+                    output_dir_path / Path(path).relative_to(input_dir_path)
+                    ).with_suffix(Path(path).suffix + ".json")
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with output_path.open("w", encoding="utf-8") as f:
+                    json.dump([chunk.to_dict()
+                               for chunk in self.get_raw_chunks(path)], f)
 
             else:
                 continue
-
-            self.ingest_out.append(out_file)
         print()
+
+    def get_raw_chunks(self, path: Path) -> list[Chunk]:
+
+        chunk_list: list[ChunkRaw] = []
+        file_str, line_char_dict = self.get_line_char_dict(path)
+        file_holder: FileHolder
+
+        if str(path).lower().endswith(".py"):
+            file_holder = self.parse_py(path, file_str)
+            chunk_list = self.flatten_py(
+                file_holder, line_char_dict)
+        elif str(path).lower().endswith(".md"):
+            file_holder = self.parse_md(path, file_str)
+            if (file_holder.introduction and
+                    file_holder.introduction.content.strip()):
+                # print(file_holder.introduction)
+
+                # print(
+                #     f"id={file_holder.path.stem}.introduction,\n"
+                #     f"path={file_holder.path},\n"
+                #     "start_char="
+                #     f"{line_char_dict[file_holder.introduction.start_line]},\n"
+                #     "end_char="
+                #     f"{line_char_dict[file_holder.introduction.end_line+1]-1}"
+                #     f",\ncontent={file_holder.introduction.content}"
+                #     )
+                chunk_list.append(
+                    ChunkRaw(
+                        id=f"{file_holder.path.stem}.introduction",
+                        path=file_holder.path,
+                        type=ChunkType.INTRODUCTION,
+                        parent=None,
+                        start_char=line_char_dict[
+                            file_holder.introduction.start_line],
+                        end_char=line_char_dict[
+                            file_holder.introduction.end_line + 1] - 1,
+                        content=file_holder.introduction.content
+                    )
+                )
+
+            chunk_list += self.flatten_md(file_holder.sections,
+                                          line_char_dict)
+        else:
+            file_holder = OtherHolder(path)
+            file_sections = file_str.split("\n\n")
+
+            file_holder.sections = ([
+                line + "\n\n"
+                for line in file_sections[:-1]] +
+                [file_sections[-1]])
+
+            counter = 0
+            start_char = 0
+            for section in file_holder.sections:
+
+                if not section.strip():
+                    continue
+
+                end_char = (start_char + len(section) - 1)
+                # print(
+                #     f"id=other.{file_holder.path.stem}.section.{counter},\n"
+                #     f"path={file_holder.path},\n"
+                #     f"start_char={start_char},\n"
+                #     f"end_char={end_char},\n"
+                #     f"content={section}\n"
+                # )
+                chunk_list.append(
+                    ChunkRaw(
+                        id=(f"other.{file_holder.path.stem}."
+                            f"section.{counter}"),
+                        path=file_holder.path,
+                        parent=None,
+                        type=ChunkType.OTHER,
+                        start_char=start_char,
+                        end_char=end_char,
+                        content=section
+                    )
+                )
+                start_char = end_char + 1
+                counter += 1
+
+        return self.split_chunks(chunk_list)
 
     def parse_py(self, path: Path, file_str: str) -> PyHolder:
 
         out_file = PyHolder(path)
         parsed = ast.parse(file_str)
+        misc_holder: MiscHolder | None = None
         # print(ast.dump(parsed, indent=4), end="\n\n\n")
         for item in parsed.body:
             # print(item)
 
             if (isinstance(item, ast.Import)):
+                if misc_holder:
+                    misc_holder.append("pre_Imports")
+                    out_file.misc.append(misc_holder)
+                    misc_holder = None
+
                 for file_import in item.names:
                     out_file.imports.append(
                         file_import.name +
@@ -163,29 +179,41 @@ class Ingestor():
                 out_file.imports_end = (item.end_lineno if item.end_lineno
                                         else item.lineno)
 
-            if (isinstance(item, ast.ImportFrom)):
+            elif (isinstance(item, ast.ImportFrom)):
+                if misc_holder:
+                    misc_holder.append("pre_Imports")
+                    out_file.misc.append(misc_holder)
+                    misc_holder = None
 
                 for file_import in item.names:
                     out_file.imports.append(
-                        ((item.module + ".") if item.module else "")
-                        + file_import.name +
-                        ((" as " + file_import.asname)
-                         if file_import.asname else ""))
+                        (((item.level * ".") + item.module + ".")
+                         if item.module else "") + file_import.name
+                        + ((" as " + file_import.asname)
+                           if file_import.asname else ""))
                 if out_file.imports_start == -1:
                     out_file.imports_start = item.lineno
                 out_file.imports_end = (item.end_lineno if item.end_lineno
                                         else item.lineno)
 
-            if isinstance(item, ast.FunctionDef):
+            elif (isinstance(item, ast.FunctionDef) or
+                    isinstance(item, ast.AsyncFunctionDef)):
                 # print(item.name, item.args.defaults[0].__dict__
                 #       if item.args.defaults else "")
                 # print(list(zip(item.args.args,
                 #       item.args.defaults)))
-                args = item.args.args
+                if misc_holder:
+                    misc_holder.append(f"pre_{item.name}")
+                    out_file.misc.append(misc_holder)
+                    misc_holder = None
+
+                args = item.args.posonlyargs + item.args.args
                 defaults: list[ast.expr | None] = (
                     [None] * (len(args) - len(item.args.defaults))
                     + item.args.defaults
                 )
+                kw_args = item.args.kwonlyargs
+                kw_defaults = item.args.kw_defaults
 
                 funct = FunctHolder(
                     path, item.name, item.lineno,
@@ -199,23 +227,32 @@ class Ingestor():
                             else ""
                         )
                         for arg, default
-                        in zip(args, defaults)
+                        in zip(args + kw_args, defaults + kw_defaults)
                     ], str(ast.unparse(item.returns))
                     if item.returns else "Undefined",
                     str(ast.get_source_segment(file_str, item)),
-                    str(ast.get_docstring(item))
+                    ast.get_docstring(item)
                 )
+                if item.args.vararg:
+                    funct.args.append("*" + item.args.vararg.arg)
+                if item.args.kwarg:
+                    funct.args.append("**" + item.args.kwarg.arg)
 
                 out_file.functs.append(funct)
 
-            if isinstance(item, ast.ClassDef):
+            elif isinstance(item, ast.ClassDef):
+                if misc_holder:
+                    misc_holder.append(f"pre_{item.name}")
+                    out_file.misc.append(misc_holder)
+                    misc_holder = None
                 class_object = ClassHolder(
                     path, item.name, item.lineno, item.end_lineno
                     if item.end_lineno else item.lineno,
-                    str(ast.get_docstring(item)),
-                    list(map(ast.unparse, item.bases)))
+                    list(map(ast.unparse, item.bases)),
+                    ast.get_docstring(item))
                 for class_item in item.body:
-                    if isinstance(class_item, ast.FunctionDef):
+                    if (isinstance(class_item, ast.FunctionDef) or
+                            isinstance(class_item, ast.AsyncFunctionDef)):
                         # print(class_item.name, type(
                         #   class_object.methods))
                         # print(len(class_item.args.args),
@@ -252,10 +289,17 @@ class Ingestor():
                                 if class_item.returns else "Undefined",
                                 str(ast.get_source_segment(file_str,
                                                            class_item)),
-                                str(ast.get_docstring(class_item))
+                                ast.get_docstring(class_item)
                             )
                         )
-                    if isinstance(class_item, ast.AnnAssign):
+                        if class_item.args.vararg:
+                            class_object.methods[-1].args.append(
+                                "*" + class_item.args.vararg.arg)
+                        if class_item.args.kwarg:
+                            class_object.methods[-1].args.append(
+                                "**" + class_item.args.kwarg.arg)
+
+                    elif isinstance(class_item, ast.AnnAssign):
                         class_object.var_annotations.append(
                             ast.unparse(class_item.target) + ": " +
                             ast.unparse(class_item.annotation) +
@@ -263,8 +307,46 @@ class Ingestor():
                                 class_item.value))
                                 if class_item.value else "")
                         )
+                    elif isinstance(class_item, ast.Assign):
+                        class_object.var_annotations.append(
+                            ast.unparse(class_item.targets[0]) +
+                            " = " + ast.unparse(class_item.value)
+                            if class_item.value else ""
+                        )
                 out_file.classes.append(class_object)
 
+            else:
+                if (isinstance(item, ast.If) and
+                    isinstance(item.test, ast.Compare) and
+                    isinstance(item.test.left, ast.Name) and
+                    item.test.left.id == "__name__" and
+                    len(item.test.ops) == 1 and
+                    len(item.test.comparators) == 1 and
+                    isinstance(item.test.ops[0], ast.Eq) and
+                    isinstance(item.test.comparators[0], ast.Constant) and
+                        item.test.comparators[0].value == "__main__"):
+                    if misc_holder:
+                        misc_holder.append("pre_MAIN_IF")
+                        out_file.misc.append(misc_holder)
+                        misc_holder = None
+                    out_file.misc.append(MiscHolder(
+                        path, "MAIN_IF", item.lineno,
+                        item.end_lineno
+                        if item.end_lineno
+                        else item.lineno,
+                        str(ast.get_source_segment(file_str, item)),
+                    ))
+                else:
+                    if not misc_holder:
+                        misc_holder = MiscHolder(path, None, item.lineno)
+                    misc_holder.append(
+                        end_line=(item.end_lineno
+                                  if item.end_lineno else item.lineno),
+                        body=str(ast.get_source_segment(file_str, item))
+                    )
+        if misc_holder:
+            misc_holder.append("post_ALL")
+            out_file.misc.append(misc_holder)
         return out_file
 
     def parse_md(self, path: Path, file_str: str) -> MDHolder:
@@ -273,7 +355,7 @@ class Ingestor():
 
         out_file = MDHolder(path)
         out_file.introduction = MDSections(
-            path, "introduction", 1, 1, "0", 0, "",
+            path, "introduction", 1, 1, 0, "",
         )
         md_parsed = md_parse.parse(file_str)
 
@@ -298,19 +380,19 @@ class Ingestor():
                 if len(token.map) == 2:
                     section = MDSections(
                         path, token.content,
-                        token.map[0]+1, token.map[1]+1,
-                        tag, int(tag[1])
+                        token.map[0]+1, token.map[1],
+                        int(tag[1])
                     )
                 elif len(token.map) == 1:
                     section = MDSections(
                         path, token.content,
                         token.map[0]+1, token.map[0]+1,
-                        tag, int(tag[0])
+                        int(tag[0])
                     )
                 else:
                     section = MDSections(
                         path, token.content,
-                        -1, -1, tag, int(tag)
+                        -1, -1, int(tag)
                     )
                 while stack and stack[-1].level >= section.level:
                     stack.pop()
@@ -327,7 +409,7 @@ class Ingestor():
             if stack:
                 stack[-1].content += token.content + "\n"
                 if token.map:
-                    stack[-1].end_line = (token.map[1] + 1
+                    stack[-1].end_line = (token.map[1]
                                           if len(token.map) == 2
                                           else token.map[0] + 1)
 
@@ -335,7 +417,7 @@ class Ingestor():
                 # Text before the first heading
                 out_file.introduction.content += token.content
                 if len(token.map) == 2:
-                    out_file.introduction.end_line = token.map[1] + 1
+                    out_file.introduction.end_line = token.map[1]
                 elif len(token.map) == 1:
                     out_file.introduction.end_line = token.map[0] + 1
                 else:
@@ -356,108 +438,111 @@ class Ingestor():
 
         return out_file
 
-    def flatten_file_holders(self) -> list[Chunk]:
+    # def flatten_file_holders(self) -> list[Chunk]:
 
-        flattened_chunks: list[ChunkRaw] = []
+    #     flattened_chunks: list[ChunkRaw] = []
 
-        last_path: Path = Path("")
-        line_char_dict: dict[int, int] = {}
+    #     last_path: Path = Path("")
+    #     line_char_dict: dict[int, int] = {}
 
-        holders: list[FileHolder] | tqdm[FileHolder] = self.ingest_out.copy()
+    #     holders: list[FileHolder] | tqdm[FileHolder] = self.ingest_out.copy()
 
-        print("\nFlattening Files...")
+    #     print("\nFlattening Files...")
 
-        if len(holders) > 500:
-            holders = tqdm(holders)
+    #     if len(holders) > 500:
+    #         holders = tqdm(holders)
 
-        for file_holder in holders:
+    #     for file_holder in holders:
 
-            # print(f"\nFlattening: {file_holder}", end="\n\n")
+    #         # print(f"\nFlattening: {file_holder}", end="\n\n")
 
-            if file_holder.path != last_path:
-                line_char_dict = self.get_line_char_dict(file_holder.path)
-                last_path = file_holder.path
+    #         if file_holder.path != last_path:
+    #             line_char_dict = self.get_line_char_dict(file_holder.path)
+    #             last_path = file_holder.path
 
-                # print(file_holder.path)
-                # print(line_char_dict)
-                # print()
+    #             # print(file_holder.path)
+    #             # print(line_char_dict)
+    #             # print()
 
-            if isinstance(file_holder, PyHolder):
+    #         if isinstance(file_holder, PyHolder):
 
-                # print(file_holder)
+    #             # print(file_holder)
 
-                flattened_chunks += self.flatten_py(file_holder,
-                                                    line_char_dict)
+    #             flattened_chunks += self.flatten_py(file_holder,
+    #                                                 line_char_dict)
 
-            elif isinstance(file_holder, MDHolder):
+    #         elif isinstance(file_holder, MDHolder):
 
-                # print(file_holder)
-                # print(line_char_dict)
-                # print()
+    #             # print(file_holder)
+    #             # print(line_char_dict)
+    #             # print()
 
-                if (file_holder.introduction and
-                        file_holder.introduction.content.strip()):
-                    # print(file_holder.introduction)
+    #             if (file_holder.introduction and
+    #                     file_holder.introduction.content.strip()):
+    #                 # print(file_holder.introduction)
 
-                    # print(
-                    #     f"id={file_holder.path.stem}.introduction,\n"
-                    #     f"path={file_holder.path},\n"
-                    #     "start_char="
-                    #     f"{line_char_dict[file_holder.introduction.start_line]},\n"
-                    #     "end_char="
-                    #     f"{line_char_dict[file_holder.introduction.end_line+1]-1}"
-                    #     f",\ncontent={file_holder.introduction.content}"
-                    #     )
-                    flattened_chunks.append(
-                        ChunkRaw(
-                            id=f"{file_holder.path.stem}.introduction",
-                            path=file_holder.path,
-                            type=ChunkType.INTRODUCTION,
-                            parent=None,
-                            start_char=line_char_dict[
-                                file_holder.introduction.start_line],
-                            end_char=line_char_dict[
-                                file_holder.introduction.end_line + 1] - 1,
-                            content=file_holder.introduction.content
-                        )
-                    )
+    #                 # print(
+    #                 #     f"id={file_holder.path.stem}.introduction,\n"
+    #                 #     f"path={file_holder.path},\n"
+    #                 #     "start_char="
+    #                 #     f"{line_char_dict[
+    #                 #         file_holder.introduction.start_line]},\n"
+    #                 #     "end_char="
+    #                 #     f"{line_char_dict[
+    #                 #         file_holder.introduction.end_line+1]-1}"
+    #                 #     f",\ncontent={file_holder.introduction.content}"
+    #                 #     )
+    #                 flattened_chunks.append(
+    #                     ChunkRaw(
+    #                         id=f"{file_holder.path.stem}.introduction",
+    #                         path=file_holder.path,
+    #                         type=ChunkType.INTRODUCTION,
+    #                         parent=None,
+    #                         start_char=line_char_dict[
+    #                             file_holder.introduction.start_line],
+    #                         end_char=line_char_dict[
+    #                             file_holder.introduction.end_line + 1] - 1,
+    #                         content=file_holder.introduction.content
+    #                     )
+    #                 )
 
-                flattened_chunks += self.flatten_md(file_holder.sections,
-                                                    line_char_dict)
+    #             flattened_chunks += self.flatten_md(file_holder.sections,
+    #                                                 line_char_dict)
 
-            else:
-                file_holder = cast(OtherHolder, file_holder)
-                counter = 0
-                start_char = 0
-                for section in file_holder.sections:
+    #         else:
+    #             file_holder = cast(OtherHolder, file_holder)
+    #             counter = 0
+    #             start_char = 0
+    #             for section in file_holder.sections:
 
-                    if not section.strip():
-                        continue
+    #                 if not section.strip():
+    #                     continue
 
-                    end_char = (start_char + len(section) - 1)
-                    # print(
-                    #     f"id=other.{file_holder.path.stem}.section.{counter},\n"
-                    #     f"path={file_holder.path},\n"
-                    #     f"start_char={start_char},\n"
-                    #     f"end_char={end_char},\n"
-                    #     f"content={section}\n"
-                    # )
-                    flattened_chunks.append(
-                        ChunkRaw(
-                            id=(f"other.{file_holder.path.stem}."
-                                f"section.{counter}"),
-                            path=file_holder.path,
-                            parent=None,
-                            type=ChunkType.OTHER,
-                            start_char=start_char,
-                            end_char=end_char,
-                            content=section
-                        )
-                    )
-                    start_char = end_char + 1
-                    counter += 1
-        print()
-        return self.split_chunks(flattened_chunks)
+    #                 end_char = (start_char + len(section) - 1)
+    #                 # print(
+    #                 #     f"id=other.{file_holder.path.stem}"
+    #                 #     f".section.{counter},\n"
+    #                 #     f"path={file_holder.path},\n"
+    #                 #     f"start_char={start_char},\n"
+    #                 #     f"end_char={end_char},\n"
+    #                 #     f"content={section}\n"
+    #                 # )
+    #                 flattened_chunks.append(
+    #                     ChunkRaw(
+    #                         id=(f"other.{file_holder.path.stem}."
+    #                             f"section.{counter}"),
+    #                         path=file_holder.path,
+    #                         parent=None,
+    #                         type=ChunkType.OTHER,
+    #                         start_char=start_char,
+    #                         end_char=end_char,
+    #                         content=section
+    #                     )
+    #                 )
+    #                 start_char = end_char + 1
+    #                 counter += 1
+    #     print()
+    #     return self.split_chunks(flattened_chunks)
 
     def flatten_py(self, py_holder: PyHolder,
                    line_char_dict: dict[int, int]
@@ -511,7 +596,7 @@ class Ingestor():
                     id=f"{py_holder.path.stem}.class.{cls.name}",
                     path=py_holder.path,
                     type=ChunkType.CLASS,
-                    parent=str(cls.inherits)[1:-1],
+                    parent=", ".join(cls.inherits),
                     start_char=line_char_dict[cls.start_line],
                     end_char=line_char_dict[cls.end_line + 1] - 1,
                     content=(("docstring: " + cls.docstring + "\n" +
@@ -573,7 +658,7 @@ class Ingestor():
                     parent=None,
                     start_char=line_char_dict[section.start_line],
                     end_char=line_char_dict[section.end_line + 1] - 1,
-                    content=section.content
+                    content=section.content.strip()
                 )
             )
             if section.children:
@@ -582,17 +667,20 @@ class Ingestor():
 
         return flattened_chunks
 
-    def get_line_char_dict(self, file_path: Path) -> dict[int, int]:
+    def get_line_char_dict(self, file_path: Path
+                           ) -> tuple[str, dict[int, int]]:
         line_char_dict: dict[int, int] = {}
+        file_str = ""
         char_count = 0
         with file_path.open("r", encoding="utf-8") as f:
             for line_number, line in enumerate(f):
+                file_str += line
                 line_char_dict[line_number+1] = char_count
                 char_count += len(line)
 
             line_char_dict[len(line_char_dict)+1] = char_count + 1
             line_char_dict[len(line_char_dict)+1] = char_count + 1
-        return line_char_dict
+        return (file_str, line_char_dict)
 
     def split_chunks(self, chunks: list[ChunkRaw]) -> list[Chunk]:
 
